@@ -530,4 +530,6 @@ static inline void init_unicode_string( UNICODE_STRING *str, const WCHAR *data )
     str->Buffer = (WCHAR *)data;
 }
 
+BOOL CDECL __wine_needs_override_large_address_aware(void);
+
 #endif /* __NTDLL_UNIX_PRIVATE_H */
