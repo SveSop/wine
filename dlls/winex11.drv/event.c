@@ -314,6 +314,24 @@ static enum event_merge_action merge_raw_motion_events( XIRawEvent *prev, XIRawE
 }
 #endif
 
+static int try_grab_pointer( Display *display )
+{
+    if (!grab_pointer)
+        return 1;
+
+    /* if we are already clipping the cursor in the current thread, we should not
+     * call XGrabPointer here or it would change the confine-to window. */
+    if (clipping_cursor && x11drv_thread_data()->clip_hwnd)
+        return 1;
+
+    if (XGrabPointer( display, root_window, False, 0, GrabModeAsync, GrabModeAsync,
+                      None, None, CurrentTime ) != GrabSuccess)
+        return 0;
+
+    XUngrabPointer( display, CurrentTime );
+    return 1;
+}
+
 /***********************************************************************
  *           merge_events
  *
@@ -605,26 +623,23 @@ static void set_input_focus( struct x11drv_win_data *data )
  */
 static void set_focus( XEvent *xev, HWND hwnd, Time time )
 {
-    HWND focus, old_active;
+    HWND focus;
     Window win;
     GUITHREADINFO threadinfo;
-
-    old_active = GetForegroundWindow();
 
     /* prevent recursion */
     x11drv_thread_data()->active_window = hwnd;
 
-    TRACE( "setting foreground window to %p\n", hwnd );
-    SetForegroundWindow( hwnd );
-
-    /* Some applications expect that a being deactivated topmost window
-     * receives the WM_WINDOWPOSCHANGING/WM_WINDOWPOSCHANGED messages,
-     * and perform some specific actions. Chessmaster is one of such apps.
-     * Window Manager keeps a topmost window on top in z-oder, so there is
-     * no need to actually do anything, just send the messages.
-     */
-    if (old_active && (GetWindowLongW( old_active, GWL_EXSTYLE ) & WS_EX_TOPMOST))
-        SetWindowPos( old_active, hwnd, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER );
+    if (!try_grab_pointer( xev->xany.display ))
+    {
+        XSendEvent( xev->xany.display, xev->xany.window, False, 0, xev );
+        return;
+    }
+    else
+    {
+        TRACE( "setting foreground window to %p\n", hwnd );
+        SetForegroundWindow( hwnd );
+    }
 
     threadinfo.cbSize = sizeof(threadinfo);
     GetGUIThreadInfo(0, &threadinfo);
@@ -836,8 +851,15 @@ static BOOL X11DRV_FocusIn( HWND hwnd, XEvent *xev )
         if (!hwnd) hwnd = GetActiveWindow();
         if (!hwnd) hwnd = x11drv_thread_data()->last_focus;
         if (hwnd && can_activate_window(hwnd)) set_focus( xev, hwnd, CurrentTime );
+        return TRUE;
     }
-    else SetForegroundWindow( hwnd );
+    else if (!try_grab_pointer( event->display ))
+    {
+        XSendEvent( event->display, event->window, False, 0, xev );
+        return FALSE;
+    }
+
+    SetForegroundWindow( hwnd );
     return TRUE;
 }
 
