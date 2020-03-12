@@ -281,6 +281,8 @@ static struct VkPhysicalDevice_T *wine_vk_physical_device_alloc(struct VkInstanc
         }
     }
 
+    num_properties += wine_vk_device_extension_faked_count();
+
     TRACE("Host supported extensions %u, Wine supported extensions %u\n", num_host_properties, num_properties);
 
     if (!(object->extensions = heap_calloc(num_properties, sizeof(*object->extensions))))
@@ -297,6 +299,13 @@ static struct VkPhysicalDevice_T *wine_vk_physical_device_alloc(struct VkInstanc
             j++;
         }
     }
+
+    for (i = 0; i < wine_vk_device_extension_faked_count(); i++)
+    {
+        object->extensions[j] = *wine_vk_device_extension_faked_idx(i);
+        j++;
+    }
+
     object->extension_count = num_properties;
 
     heap_free(host_properties);
@@ -380,6 +389,8 @@ static void wine_vk_device_free_create_info(VkDeviceCreateInfo *create_info)
         heap_free((void *)group_info->pPhysicalDevices);
     }
 
+    heap_free((void *)create_info->ppEnabledExtensionNames);
+
     free_VkDeviceCreateInfo_struct_chain(create_info);
 }
 
@@ -389,6 +400,7 @@ static VkResult wine_vk_device_convert_create_info(const VkDeviceCreateInfo *src
     VkDeviceGroupDeviceCreateInfo *group_info;
     unsigned int i;
     VkResult res;
+    const char** extensions;
 
     *dst = *src;
 
@@ -413,6 +425,18 @@ static VkResult wine_vk_device_convert_create_info(const VkDeviceCreateInfo *src
             physical_devices[i] = group_info->pPhysicalDevices[i]->phys_dev;
         }
         group_info->pPhysicalDevices = physical_devices;
+    }
+
+    extensions = heap_alloc(sizeof(const char*) * src->enabledExtensionCount);
+    dst->ppEnabledExtensionNames = extensions;
+    dst->enabledExtensionCount = 0;
+    for (i = 0; i < src->enabledExtensionCount; i++) {
+        const char *extension_name = src->ppEnabledExtensionNames[i];
+
+        if (!wine_vk_device_extension_faked(extension_name)) {
+            extensions[dst->enabledExtensionCount] = extension_name;
+            dst->enabledExtensionCount++;
+        }
     }
 
     /* Should be filtered out by loader as ICDs don't support layers. */
@@ -1261,6 +1285,59 @@ VkResult WINAPI wine_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *supporte
     TRACE("Loader requested ICD version %u, returning %u\n", req_version, *supported_version);
 
     return VK_SUCCESS;
+}
+
+/* VK_EXT_full_screen_exclusive */
+
+VkResult WINAPI wine_vkGetPhysicalDeviceSurfacePresentModes2EXT(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+    uint32_t*                                   pPresentModeCount,
+    VkPresentModeKHR*                           pPresentModes)
+{
+    TRACE("%p, %p, %p, %p", physicalDevice, pSurfaceInfo, pPresentModeCount, pPresentModes);
+    return thunk_vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, pSurfaceInfo->surface, pPresentModeCount, pPresentModes);
+}
+
+VkResult WINAPI wine_vkGetDeviceGroupSurfacePresentModes2EXT(
+    VkDevice                                    device,
+    const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+    VkDeviceGroupPresentModeFlagsKHR*           pModes)
+{
+    TRACE("%p, %p, %p", device, pSurfaceInfo, pModes);
+    return thunk_vkGetDeviceGroupSurfacePresentModesKHR(device, pSurfaceInfo->surface, pModes);
+}
+
+VkResult WINAPI wine_vkAcquireFullScreenExclusiveModeEXT(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain)
+{
+    /* don't care */
+    TRACE("%p, %s", device, wine_dbgstr_longlong(swapchain));
+
+    return VK_SUCCESS;
+}
+
+VkResult WINAPI wine_vkReleaseFullScreenExclusiveModeEXT(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain)
+{
+    /* don't care */
+    TRACE("%p, %s", device, wine_dbgstr_longlong(swapchain));
+
+    return VK_SUCCESS;
+}
+
+/* extra crap we moved to private thunks */
+
+VkResult WINAPI wine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR *pModes)
+{
+    return thunk_vkGetDeviceGroupSurfacePresentModesKHR(device, surface, pModes);
+}
+
+VkResult WINAPI wine_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pPresentModeCount, VkPresentModeKHR *pPresentModes)
+{
+    return thunk_vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes);
 }
 
 VkResult WINAPI wine_vkQueueSubmit(VkQueue queue, uint32_t count,
