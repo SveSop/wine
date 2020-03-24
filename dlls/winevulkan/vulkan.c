@@ -73,6 +73,15 @@ static uint32_t wine_vk_count_struct_(void *s, VkStructureType t)
     return result;
 }
 
+#define wine_vk_exchange_pnext(a, b) wine_vk_exchange_pnext_((VkBaseOutStructure *)a, (VkBaseOutStructure *)b)
+static void wine_vk_exchange_pnext_(VkBaseOutStructure *a, VkBaseOutStructure *b)
+{
+    b->pNext = a->pNext;
+    a->pNext = b;
+}
+
+#define wine_vk_copy_pnext(a, ctype, stype, b) do { ctype* lookup = wine_vk_find_struct(a, stype); if (lookup) { b = *lookup; wine_vk_exchange_pnext(a, &b); } } while (0)
+
 static void *wine_vk_get_global_proc_addr(const char *name);
 
 static HINSTANCE hinstance;
@@ -2502,6 +2511,9 @@ VkResult WINAPI wine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCrea
     VkSwapchainCreateInfoKHR native_info;
 #endif
     VkResult result;
+    VkDeviceGroupSwapchainCreateInfoKHR  our_device_group_swapchain_create_info;
+    VkImageFormatListCreateInfo       our_image_format_list_create_info;
+
     VkExtent2D user_sz;
     struct VkSwapchainKHR_T *object;
 
@@ -2514,6 +2526,19 @@ VkResult WINAPI wine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCrea
     }
 
     convert_VkSwapchainCreateInfoKHR_win_to_host(create_info, &native_info);
+
+    native_info.pNext = NULL;
+
+    wine_vk_copy_pnext(&native_info, VkDeviceGroupSwapchainCreateInfoKHR, DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR, our_device_group_swapchain_create_info);
+
+    wine_vk_copy_pnext(&native_info, VkImageFormatListCreateInfo, IMAGE_FORMAT_LIST_CREATE_INFO, our_image_format_list_create_info);
+
+    // VkSwapchainCounterCreateInfoEXT is not in our version of WineVulkan
+    // Come back to me when this gets into Proton Wine!
+
+    // Ignoring VkSurfaceFullScreenExclusiveInfoEXT and VkSurfaceFullScreenExclusiveWin32InfoEXT
+    // as we want to nuke those
+    // and VkSwapchainDisplayNativeHdrCreateInfoAMD (blacklisted for HDR for now)
 
     if(native_info.oldSwapchain)
         native_info.oldSwapchain = ((struct VkSwapchainKHR_T *)(UINT_PTR)native_info.oldSwapchain)->swapchain;
