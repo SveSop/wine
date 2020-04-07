@@ -515,7 +515,7 @@ static void pulse_probe_settings(pa_mainloop *ml, pa_context *ctx, int render, W
         ret = -1;
     else if (render)
         ret = pa_stream_connect_playback(stream, NULL, &attr,
-        PA_STREAM_START_CORKED|PA_STREAM_FIX_RATE|PA_STREAM_FIX_CHANNELS|PA_STREAM_EARLY_REQUESTS, NULL, NULL);
+        PA_STREAM_START_CORKED|PA_STREAM_FIX_RATE|PA_STREAM_FIX_CHANNELS|PA_STREAM_EARLY_REQUESTS|PA_STREAM_VARIABLE_RATE, NULL, NULL);
     else
         ret = pa_stream_connect_record(stream, NULL, &attr, PA_STREAM_START_CORKED|PA_STREAM_FIX_RATE|PA_STREAM_FIX_CHANNELS|PA_STREAM_EARLY_REQUESTS);
     if (ret >= 0) {
@@ -1446,7 +1446,7 @@ static HRESULT pulse_stream_connect(ACImpl *This, UINT32 period_bytes) {
 
     if (This->dataflow == eRender)
         ret = pa_stream_connect_playback(This->stream, NULL, &attr,
-        PA_STREAM_START_CORKED|PA_STREAM_START_UNMUTED|PA_STREAM_ADJUST_LATENCY|moving, NULL, NULL);
+        PA_STREAM_START_CORKED|PA_STREAM_START_UNMUTED|PA_STREAM_ADJUST_LATENCY|PA_STREAM_VARIABLE_RATE|moving, NULL, NULL);
     else
         ret = pa_stream_connect_record(This->stream, NULL, &attr,
         PA_STREAM_START_CORKED|PA_STREAM_START_UNMUTED|PA_STREAM_ADJUST_LATENCY|moving);
@@ -3216,14 +3216,81 @@ static ULONG WINAPI AudioClockAdjustment_Release(IAudioClockAdjustment *iface)
     return IAudioClient_Release(&This->IAudioClient3_iface);
 }
 
+static BOOL pulse_update_sample_rate(ACImpl *This, uint32_t new_rate)
+{
+    pa_operation *o;
+    int success;
+
+    o = pa_stream_update_sample_rate(This->stream, new_rate, pulse_op_cb, &success);
+    if (o)
+    {
+        while (pa_operation_get_state(o) == PA_OPERATION_RUNNING)
+            pthread_cond_wait(&pulse_cond, &pulse_lock);
+        pa_operation_unref(o);
+    } else
+        success = 0;
+
+    return success != 0;
+}
+
 static HRESULT WINAPI AudioClockAdjustment_SetSampleRate(IAudioClockAdjustment *iface,
         float new_rate)
 {
     ACImpl *This = impl_from_IAudioClockAdjustment(iface);
+    int success;
+    uint32_t old_rate;
+    pa_operation *o;
+    HRESULT hr;
+    pa_buffer_attr attr;
 
     TRACE("(%p)->(%f)\n", This, new_rate);
 
-    return E_NOTIMPL;
+    pthread_mutex_lock(&pulse_lock);
+    hr = pulse_stream_valid(This);
+    if (FAILED(hr)) {
+        pthread_mutex_unlock(&pulse_lock);
+        return hr;
+    }
+
+    if(!pulse_update_sample_rate(This, new_rate)){
+        WARN("Something went wrong during update_sample_rate\n");
+        pthread_mutex_unlock(&pulse_lock);
+        return E_FAIL;
+    }
+
+    old_rate = This->ss.rate;
+    This->ss.rate = new_rate;
+    This->period_bytes = pa_frame_size(&This->ss) * MulDiv(This->mmdev_period_usec, This->ss.rate, 1000000);
+
+    attr.minreq = attr.fragsize = This->period_bytes;
+    attr.tlength = This->period_bytes * 3;
+    attr.maxlength = This->bufsize_frames * pa_frame_size(&This->ss);
+    attr.prebuf = pa_frame_size(&This->ss);
+
+    o = pa_stream_set_buffer_attr(This->stream, &attr, pulse_op_cb, &success);
+    if (o)
+    {
+        while (pa_operation_get_state(o) == PA_OPERATION_RUNNING)
+            pthread_cond_wait(&pulse_cond, &pulse_lock);
+        pa_operation_unref(o);
+    } else
+        success = 0;
+
+    if(!success){
+        WARN("Something went wrong during set_buffer_attr\n");
+        if(pulse_update_sample_rate(This, old_rate)){
+            This->ss.rate = old_rate;
+            This->period_bytes = pa_frame_size(&This->ss) * MulDiv(This->mmdev_period_usec, This->ss.rate, 1000000);
+        }
+        pthread_mutex_unlock(&pulse_lock);
+        return E_FAIL;
+    }
+
+    TRACE("period_bytes now: %u\n", This->period_bytes);
+
+    pthread_mutex_unlock(&pulse_lock);
+
+    return S_OK;
 }
 
 static const IAudioClockAdjustmentVtbl AudioClockAdjustment_Vtbl =
