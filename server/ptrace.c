@@ -341,6 +341,27 @@ static struct thread *get_ptrace_thread( struct process *process )
 }
 
 /* read data from a process memory space */
+#ifdef linux
+#include <sys/uio.h>
+
+int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
+{
+    struct iovec local_iov, remote_iov;
+
+    if ((size_t)size != size)
+    {
+        set_error( STATUS_ACCESS_DENIED );
+        return 0;
+    }
+
+    local_iov.iov_base  = (void*)dest;
+    local_iov.iov_len   = (size_t)size;
+    remote_iov.iov_base = (void*)ptr;
+    remote_iov.iov_len  = (size_t)size;
+
+    return process_vm_readv(process->unix_pid, &local_iov, 1, &remote_iov, 1, 0) != -1;
+}
+#else
 int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
 {
     struct thread *thread = get_ptrace_thread( process );
@@ -408,6 +429,7 @@ int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t 
     }
     return !len;
 }
+#endif
 
 /* make sure we can write to the whole address range */
 /* len is the total size (in ints) */
@@ -426,6 +448,27 @@ static int check_process_write_access( struct thread *thread, long *addr, data_s
 }
 
 /* write data to a process memory space */
+#ifdef linux
+#include <sys/uio.h>
+
+int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
+{
+    struct iovec local_iov, remote_iov;
+
+    if ((size_t)size != size)
+    {
+        set_error( STATUS_ACCESS_DENIED );
+        return 0;
+    }
+
+    local_iov.iov_base  = (void*)src;
+    local_iov.iov_len   = (size_t)size;
+    remote_iov.iov_base = (void*)ptr;
+    remote_iov.iov_len  = (size_t)size;
+
+    return process_vm_writev(process->unix_pid, &local_iov, 1, &remote_iov, 1, 0) != -1;
+}
+#else
 int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
 {
     struct thread *thread = get_ptrace_thread( process );
@@ -512,6 +555,7 @@ int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t
     }
     return ret;
 }
+#endif
 
 /* retrieve an LDT selector entry */
 void get_selector_entry( struct thread *thread, int entry, unsigned int *base,
