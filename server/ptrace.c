@@ -372,24 +372,33 @@ int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t 
             return 0;
         }
 
-        local_iov.iov_base  = (void*)dest;
-        local_iov.iov_len   = (size_t)size;
-        remote_iov.iov_base = (void*)ptr;
-        remote_iov.iov_len  = (size_t)size;
+        do {
+            local_iov.iov_base  = (void*)dest;
+            local_iov.iov_len   = (size_t)size;
+            remote_iov.iov_base = (void*)ptr;
+            remote_iov.iov_len  = (size_t)size;
 
-        errno = 0;
-        ret = process_vm_readv( process->unix_pid, &local_iov, 1, &remote_iov, 1, 0 );
-        if (errno == ENOSYS)
-        {
-            have_process_vm_readv = 0;
-            goto do_pread;
-        }
+            errno = 0;
+            ret = process_vm_readv( process->unix_pid, &local_iov, 1, &remote_iov, 1, 0 );
+            if (errno == ENOSYS)
+            {
+                have_process_vm_readv = 0;
+                goto do_pread;
+            }
 
-        if (ret == -1) /* An error occurred. */
-            return 0;
-        if ((data_size_t)ret > 0) /* Data was sucessfully read. */
-            return 1;
-        /* No data was read, try again with pread. */
+            if (ret == -1) /* An error occurred. */
+                return 0;
+            if (ret == 0 && size != 0) /* No data could be read, try pread instead. */
+                goto do_pread;
+
+            /* Try reading the next part. */
+            if ((size_t)ret > size) ret = (ssize_t)size;
+            ptr += ret;
+            dest += ret;
+            size -= ret;
+        } while (size > 0);
+
+        return 1;
     }
 do_pread:
 #endif
@@ -403,10 +412,25 @@ do_pread:
     sprintf( procmem, "/proc/%lu/mem", (unsigned long)process->unix_pid );
     if ((fd = open( procmem, O_RDONLY )) == -1)
         return 0;
-    ret = pread( fd, dest, size, ptr );
+
+    do {
+        ret = pread( fd, dest, size, ptr );
+
+        if (ret == -1) /* An error occurred. */
+            return 0;
+        if (ret == 0 && size != 0) /* No data could be read. */
+            return 0;
+
+        /* Try reading the next part. */
+        if ((size_t)ret > size) ret = (ssize_t)size;
+        ptr += ret;
+        dest += ret;
+        size -= ret;
+    } while (size > 0);
+
     close( fd );
 
-    return ret != -1 && (data_size_t)ret > size;
+    return 1;
 }
 
 /* make sure we can write to the whole address range */
