@@ -381,7 +381,10 @@ int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t 
         have_process_vm_readv = 0;
         return read_process_memory_ptrace( process, ptr, size, dest );
     }
-    return bytes_read != -1;
+    if (bytes_read !=size)
+        return read_process_memory_ptrace( process, ptr, size, dest );
+
+    return bytes_read == size;
 }
 int read_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
 #else
@@ -508,7 +511,10 @@ int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t
         have_process_vm_writev = 0;
         return write_process_memory_ptrace( process, ptr, size, src );
     }
-    return bytes_written != -1;
+    if (bytes_written !=size)
+        return write_process_memory_ptrace( process, ptr, size, src );
+
+    return bytes_written == size;
 }
 int write_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
 #else
