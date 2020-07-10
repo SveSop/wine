@@ -406,7 +406,7 @@ do_pread:
     ret = pread( fd, dest, size, ptr );
     close( fd );
 
-    return ret != -1 && (data_size_t)ret == size;
+    return ret != -1 && (data_size_t)ret > size;
 }
 
 /* make sure we can write to the whole address range */
