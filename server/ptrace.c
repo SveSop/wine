@@ -344,117 +344,69 @@ static struct thread *get_ptrace_thread( struct process *process )
 }
 
 /* read data from a process memory space */
-#ifdef HAVE_SYS_UIO_H
-int read_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, char *dest );
 int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
 {
     static int have_process_vm_readv = -1;
-    struct iovec local_iov, remote_iov;
-    int bytes_read;
-
-    if (have_process_vm_readv == 0)
-        return read_process_memory_ptrace( process, ptr, size, dest );
+    int page_size = get_page_size();
+    char procmem[24];
+    int fd;
+    ssize_t ret;
 
     if (!get_ptrace_thread( process )) return 0;
 
-    if ((unsigned long)ptr != ptr) /* Not sure what this is for? */
+    if ((unsigned long)ptr != ptr) /* Still no idea what this is for. */
     {
         set_error( STATUS_ACCESS_DENIED );
         return 0;
     }
 
-    if ((size_t)size != size)
+#ifdef HAVE_SYS_UIO_H
+    /* Use process_vm_readv if the memory region does not cross a page boundary. */
+    if (have_process_vm_readv && ((size_t)ptr & (page_size - 1)) + size < page_size)
     {
-        set_error( STATUS_ACCESS_DENIED );
-        return 0;
+        struct iovec local_iov, remote_iov;
+
+        if ((size_t)size != size)
+        {
+            set_error( STATUS_ACCESS_DENIED );
+            return 0;
+        }
+
+        local_iov.iov_base  = (void*)dest;
+        local_iov.iov_len   = (size_t)size;
+        remote_iov.iov_base = (void*)ptr;
+        remote_iov.iov_len  = (size_t)size;
+
+        errno = 0;
+        ret = process_vm_readv( process->unix_pid, &local_iov, 1, &remote_iov, 1, 0 );
+        if (errno == ENOSYS)
+        {
+            have_process_vm_readv = 0;
+            goto do_pread;
+        }
+
+        if (ret == -1) /* An error occurred. */
+            return 0;
+        if ((data_size_t)ret > 0) /* Data was sucessfully read. */
+            return 1;
+        /* No data was read, try again with pread. */
     }
-
-    local_iov.iov_base  = (void*)dest;
-    local_iov.iov_len   = (size_t)size;
-    remote_iov.iov_base = (void*)ptr;
-    remote_iov.iov_len  = (size_t)size;
-
-    errno = 0;
-    bytes_read = process_vm_readv(process->unix_pid, &local_iov, 1, &remote_iov, 1, 0);
-    if (errno == ENOSYS)
-    {
-        have_process_vm_readv = 0;
-        return read_process_memory_ptrace( process, ptr, size, dest );
-    }
-    if (bytes_read !=size)
-        return read_process_memory_ptrace( process, ptr, size, dest );
-
-    return bytes_read == size;
-}
-int read_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
-#else
-int read_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, char *dest )
+do_pread:
 #endif
-{
-    struct thread *thread = get_ptrace_thread( process );
-    unsigned int first_offset, last_offset, len;
-    unsigned long data, *addr;
 
-    if (!thread) return 0;
-
-    if ((unsigned long)ptr != ptr)
+    if ((size_t)size != size || size == (data_size_t)-1 || (off_t)ptr != ptr)
     {
         set_error( STATUS_ACCESS_DENIED );
         return 0;
     }
 
-    first_offset = ptr % sizeof(long);
-    last_offset = (size + first_offset) % sizeof(long);
-    if (!last_offset) last_offset = sizeof(long);
+    sprintf( procmem, "/proc/%lu/mem", (unsigned long)process->unix_pid );
+    if ((fd = open( procmem, O_RDONLY )) == -1)
+        return 0;
+    ret = pread( fd, dest, size, ptr );
+    close( fd );
 
-    addr = (unsigned long *)(unsigned long)(ptr - first_offset);
-    len = (size + first_offset + sizeof(long) - 1) / sizeof(long);
-
-    if (suspend_for_ptrace( thread ))
-    {
-        if (len > 3)  /* /proc/pid/mem should be faster for large sizes */
-        {
-            char procmem[24];
-            int fd;
-
-            sprintf( procmem, "/proc/%u/mem", process->unix_pid );
-            if ((fd = open( procmem, O_RDONLY )) != -1)
-            {
-                ssize_t ret = pread( fd, dest, size, ptr );
-                close( fd );
-                if (ret == size)
-                {
-                    len = 0;
-                    goto done;
-                }
-            }
-        }
-
-        if (len > 1)
-        {
-            if (read_thread_long( thread, addr++, &data ) == -1) goto done;
-            memcpy( dest, (char *)&data + first_offset, sizeof(long) - first_offset );
-            dest += sizeof(long) - first_offset;
-            first_offset = 0;
-            len--;
-        }
-
-        while (len > 1)
-        {
-            if (read_thread_long( thread, addr++, &data ) == -1) goto done;
-            memcpy( dest, &data, sizeof(long) );
-            dest += sizeof(long);
-            len--;
-        }
-
-        if (read_thread_long( thread, addr++, &data ) == -1) goto done;
-        memcpy( dest, (char *)&data + first_offset, last_offset - first_offset );
-        len--;
-
-    done:
-        resume_after_ptrace( thread );
-    }
-    return !len;
+    return ret != -1 && (data_size_t)ret == size;
 }
 
 /* make sure we can write to the whole address range */
@@ -474,52 +426,7 @@ static int check_process_write_access( struct thread *thread, long *addr, data_s
 }
 
 /* write data to a process memory space */
-#ifdef HAVE_SYS_UIO_H
-int write_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, const char *src );
 int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
-{
-    static int have_process_vm_writev = -1;
-    struct iovec local_iov, remote_iov;
-    int bytes_written;
-
-    if (have_process_vm_writev == 0)
-        return write_process_memory_ptrace( process, ptr, size, src );
-
-    if (!get_ptrace_thread( process )) return 0;
-
-    if ((unsigned long)ptr != ptr) /* Not sure what this is for? */
-    {
-        set_error( STATUS_ACCESS_DENIED );
-        return 0;
-    }
-
-    if ((size_t)size != size)
-    {
-        set_error( STATUS_ACCESS_DENIED );
-        return 0;
-    }
-
-    local_iov.iov_base  = (void*)src;
-    local_iov.iov_len   = (size_t)size;
-    remote_iov.iov_base = (void*)ptr;
-    remote_iov.iov_len  = (size_t)size;
-
-    errno = 0;
-    bytes_written = process_vm_writev(process->unix_pid, &local_iov, 1, &remote_iov, 1, 0);
-    if (errno == ENOSYS)
-    {
-        have_process_vm_writev = 0;
-        return write_process_memory_ptrace( process, ptr, size, src );
-    }
-    if (bytes_written !=size)
-        return write_process_memory_ptrace( process, ptr, size, src );
-
-    return bytes_written == size;
-}
-int write_process_memory_ptrace( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
-#else
-int write_process_memory( struct process *process, client_ptr_t ptr, data_size_t size, const char *src )
-#endif
 {
     struct thread *thread = get_ptrace_thread( process );
     int ret = 0;
