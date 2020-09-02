@@ -55,7 +55,7 @@ static NTSTATUS  (WINAPI *pRtlInitializeExtendedContext2)(void *context, ULONG c
         ULONG64 compaction_mask);
 static NTSTATUS  (WINAPI *pRtlCopyExtendedContext)(CONTEXT_EX *dst, ULONG context_flags, CONTEXT_EX *src);
 static void *    (WINAPI *pRtlLocateExtendedFeature)(CONTEXT_EX *context_ex, ULONG feature_id, ULONG *length);
-static void *    (WINAPI *pRtlLocateLegacyContext)(CONTEXT_EX *context_ex, ULONG *length);
+static CONTEXT * (WINAPI *pRtlLocateLegacyContext)(CONTEXT_EX *context_ex, ULONG *length);
 static void      (WINAPI *pRtlSetExtendedFeaturesMask)(CONTEXT_EX *context_ex, ULONG64 feature_mask);
 static ULONG64   (WINAPI *pRtlGetExtendedFeaturesMask)(CONTEXT_EX *context_ex);
 static NTSTATUS  (WINAPI *pNtReadVirtualMemory)(HANDLE, const void*, void*, SIZE_T, SIZE_T*);
@@ -6660,7 +6660,7 @@ static void test_extended_context(void)
     ULONG flags, flags_fpx, expected_flags;
     ULONG (WINAPI* func)(void) = code_mem;
     CONTEXT_EX *context_ex;
-    CONTEXT *context;
+    CONTEXT *context, *context2;
     unsigned data[8];
     ULONG64 mask;
     XSTATE *xs;
@@ -6781,12 +6781,12 @@ static void test_extended_context(void)
                 /* Crashes on Windows. */
                 pRtlLocateLegacyContext(NULL, NULL);
             }
-            p = pRtlLocateLegacyContext(context_ex, NULL);
-            ok(p == context, "Got unexpected p %p, flags %#x.\n", p, flags);
+            context2 = pRtlLocateLegacyContext(context_ex, NULL);
+            ok(context2 == context, "Got unexpected context %p, flags %#x.\n", context2, flags);
             length2 = 0xdeadbeef;
-            p = pRtlLocateLegacyContext(context_ex, &length2);
-            ok(p == context && length2 == context_ex->Legacy.Length,
-                    "Got unexpected p %p, length %#x, flags %#x.\n", p, length2, flags);
+            context2 = pRtlLocateLegacyContext(context_ex, &length2);
+            ok(context2 == context && length2 == context_ex->Legacy.Length,
+                    "Got unexpected context %p, length %#x, flags %#x.\n", context2, length2, flags);
             length2 = expected_length;
 
             if (0)
