@@ -912,12 +912,12 @@ void * WINAPI RtlLocateExtendedFeature( CONTEXT_EX *context_ex, ULONG feature_id
 /**********************************************************************
  *              RtlLocateLegacyContext      (NTDLL.@)
  */
-void * WINAPI RtlLocateLegacyContext( CONTEXT_EX *context_ex, ULONG *length )
+CONTEXT * WINAPI RtlLocateLegacyContext( CONTEXT_EX *context_ex, ULONG *length )
 {
     if (length)
         *length = context_ex->Legacy.Length;
 
-    return (BYTE *)context_ex + context_ex->Legacy.Offset;
+    return (CONTEXT *)((BYTE *)context_ex + context_ex->Legacy.Offset);
 }
 
 /**********************************************************************
@@ -952,7 +952,7 @@ NTSTATUS WINAPI RtlCopyExtendedContext( CONTEXT_EX *dst, ULONG context_flags, CO
     XSTATE *dst_xs, *src_xs;
     ULONG64 feature_mask;
     unsigned int start;
-    BYTE *d, *s;
+    CONTEXT *d, *s;
 
     TRACE( "dst %p, context_flags %#x, src %p.\n", dst, context_flags, src );
 
@@ -965,7 +965,7 @@ NTSTATUS WINAPI RtlCopyExtendedContext( CONTEXT_EX *dst, ULONG context_flags, CO
     d = RtlLocateLegacyContext( dst, NULL );
     s = RtlLocateLegacyContext( src, NULL );
 
-    *((ULONG *)(d + p->flags_offset)) |= context_flags;
+    *((ULONG *)((BYTE *)d + p->flags_offset)) |= context_flags;
 
     start = 0;
     range = p->copy_ranges;
@@ -978,7 +978,7 @@ NTSTATUS WINAPI RtlCopyExtendedContext( CONTEXT_EX *dst, ULONG context_flags, CO
         }
         else if (start)
         {
-            memcpy( d + start, s + start, range->start - start );
+            memcpy( (BYTE *)d + start, (BYTE *)s + start, range->start - start );
             start = 0;
         }
     }
