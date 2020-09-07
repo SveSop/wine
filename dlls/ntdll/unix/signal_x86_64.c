@@ -1561,6 +1561,23 @@ static void restore_context( const struct xcontext *xcontext, ucontext_t *sigcon
 
 
 /***********************************************************************
+ *		     set_nonvolatile_regs
+ */
+extern void WINAPI set_nonvolatile_regs( const CONTEXT *context );
+__ASM_GLOBAL_FUNC( set_nonvolatile_regs,
+                   "movq 0x90(%rcx),%rbx\n\t"       /* context->Rbx */
+                   "movq 0xa0(%rcx),%rbp\n\t"       /* context->Rbp */
+                   "movq 0xa8(%rcx),%rsi\n\t"       /* context->Rsi */
+                   "movq 0xb0(%rcx),%rdi\n\t"       /* context->Rdi */
+                   "movq 0xd8(%rcx),%r12\n\t"       /* context->R12 */
+                   "movq 0xe0(%rcx),%r13\n\t"       /* context->R13 */
+                   "movq 0xe8(%rcx),%r14\n\t"       /* context->R14 */
+                   "movq 0xf0(%rcx),%r15\n\t"       /* context->R15 */
+                   "fxrstor 0x100(%rcx)\n\t"        /* context->FltSave */
+                   "ret" );
+
+
+/***********************************************************************
  *           set_full_cpu_context
  *
  * Set the new CPU context.
@@ -2028,15 +2045,16 @@ static void setup_exception( ucontext_t *sigcontext, EXCEPTION_RECORD *rec )
  */
 __ASM_GLOBAL_FUNC( call_user_apc_dispatcher,
                    "movq 0x28(%rsp),%rsi\n\t"       /* func */
-                   "movq 0x30(%rsp),%rdi\n\t"       /* dispatcher */
+                   "movq 0x30(%rsp),%r10\n\t"       /* dispatcher */
                    "movq %gs:0x30,%rbx\n\t"
                    "jrcxz 1f\n\t"
                    "movq 0x98(%rcx),%rax\n\t"       /* context_ptr->Rsp */
-                   "leaq -0x5c0(%rax),%rsp\n\t"     /* sizeof(CONTEXT) + offsetof(frame,ret_addr) */
+                   "leaq -0x5e0(%rax),%rsp\n\t"     /* 0x20 (unwind regs space )
+                                                     * + sizeof(CONTEXT) + offsetof(frame,ret_addr) */
                    "andq $~15,%rsp\n\t"
                    "jmp 2f\n"
                    "1:\tmovq 0x328(%rbx),%rax\n\t"  /* amd64_thread_data()->syscall_frame */
-                   "leaq -0x4d0(%rax),%rsp\n\t"
+                   "leaq -0x4f0(%rax),%rsp\n\t"     /* 0x20 (unwind regs space ) + sizeof(CONTEXT) */
                    "andq $~15,%rsp\n\t"
                    "movq %rdx,%r12\n\t"             /* ctx */
                    "movq %r8,%r13\n\t"              /* arg1 */
@@ -2054,7 +2072,8 @@ __ASM_GLOBAL_FUNC( call_user_apc_dispatcher,
                    "movq %rsi,0x20(%rsp)\n\t"       /* func */
                    "movq 0xa0(%rcx),%rbp\n\t"       /* context.Rbp */
                    "pushq 0xf8(%rcx)\n\t"           /* context.Rip */
-                   "jmp *%rdi" )
+                   "call " __ASM_NAME("set_nonvolatile_regs") "\n\t"
+                   "jmp *%r10" )
 
 
 /***********************************************************************
