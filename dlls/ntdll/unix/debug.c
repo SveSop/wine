@@ -268,9 +268,18 @@ int __cdecl __wine_dbg_output( const char *str )
 
     if (end)
     {
-        ret += append_output( info, str, end + 1 - str );
-        __wine_dbg_write( info->output, info->out_pos );
-        info->out_pos = 0;
+        if (info->out_pos)
+        {
+            ret += append_output( info, str, end + 1 - str );
+            __wine_dbg_write( info->output, info->out_pos );
+            info->out_pos = 0;
+        }
+        else
+        {
+            /* output directly, no need cache */
+            ret = end - str + 1;
+            __wine_dbg_write( str, ret );
+        }
         str = end + 1;
     }
     if (*str) ret += append_output( info, str, strlen( str ));
