@@ -226,4 +226,7 @@ struct key_funcs
     NTSTATUS (CDECL *key_secret_agreement)( struct key *, struct key *, struct secret * );
 };
 
+const struct key_funcs *gnutls_lib_init(DWORD reason);
+const struct key_funcs *macos_lib_init(DWORD reason);
+
 #endif /* __BCRYPT_INTERNAL_H */
