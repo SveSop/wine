@@ -380,6 +380,12 @@ typedef struct _PEB
     PVOID                        WaitOnAddressHashTable [0x80];     /* 25c/3a0 */
     PVOID                        TelemetryCoverageHeader;           /* 45c/7a0 */
     ULONG                        CloudFileFlags;                    /* 460/7a8 */
+    ULONG                        CloudFileDiagFlags;                /* 464/7ac */
+    CHAR                         PlaceholderCompatibilityMode;      /* 468/7b0 */
+    CHAR                         PlaceholderCompatibilityModeReserved[7]; /* 469/7b1 */
+    PVOID                        LeapSecondData;                    /* 470/7b8 */
+    ULONG                        LeapSecondFlags;                   /* 474/7c0 */
+    ULONG                        NtGlobalFlag2;                     /* 478/7c4 */
 } PEB, *PPEB;
 
 
@@ -618,6 +624,12 @@ typedef struct _PEB64
     ULONG64                      WaitOnAddressHashTable [0x80];     /* 03a0 */
     ULONG64                      TelemetryCoverageHeader;           /* 07a0 */
     ULONG                        CloudFileFlags;                    /* 07a8 */
+    ULONG                        CloudFileDiagFlags;                /* 07ac */
+    CHAR                         PlaceholderCompatibilityMode;      /* 07b0 */
+    CHAR                         PlaceholderCompatibilityModeReserved[7]; /* 07b1 */
+    PVOID                        LeapSecondData;                    /* 07b8 */
+    ULONG                        LeapSecondFlags;                   /* 07c0 */
+    ULONG                        NtGlobalFlag2;                     /* 07c4 */
 } PEB64;
 
 typedef struct _TEB64
