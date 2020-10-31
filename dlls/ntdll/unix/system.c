@@ -2722,12 +2722,6 @@ NTSTATUS WINAPI NtQuerySystemInformation( SYSTEM_INFORMATION_CLASS class,
         break;
     }
 
-    case SystemExtendedProcessInformation:
-        FIXME("SystemExtendedProcessInformation, size %u, info %p, stub!\n", size, info);
-        memset( info, 0, size );
-        ret = STATUS_SUCCESS;
-        break;
-
     case SystemCodeIntegrityInformation:
     {
         SYSTEM_CODEINTEGRITY_INFORMATION *scii = info;
