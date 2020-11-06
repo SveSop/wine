@@ -1539,13 +1539,21 @@ void WINAPI SetInternalWindowPos( HWND hwnd, UINT showCmd,
  */
 static BOOL can_activate_window( HWND hwnd )
 {
+    DWORD cloaked = 0;
     LONG style;
 
     if (!hwnd) return FALSE;
     style = GetWindowLongW( hwnd, GWL_STYLE );
     if (!(style & WS_VISIBLE)) return FALSE;
     if ((style & (WS_POPUP|WS_CHILD)) == WS_CHILD) return FALSE;
-    return !(style & WS_DISABLED);
+    if (style & WS_DISABLED) return FALSE;
+    SERVER_START_REQ( get_window_cloaked )
+    {
+        req->handle = wine_server_user_handle( hwnd );
+        if (!wine_server_call( req )) cloaked = reply->cloaked;
+    }
+    SERVER_END_REQ;
+    return !cloaked;
 }
 
 
