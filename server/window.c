@@ -38,6 +38,7 @@
 #include "process.h"
 #include "user.h"
 #include "unicode.h"
+#include "dwmapi.h"
 
 /* a window property */
 struct property
@@ -2183,6 +2184,31 @@ DECL_HANDLER(set_window_info)
 
     /* changing window style triggers a non-client paint */
     if (req->flags & SET_WIN_STYLE) win->paint_flags |= PAINT_NONCLIENT;
+}
+
+
+/* get the window's cloaked attribute as DWM_CLOAKED_* value */
+DECL_HANDLER(get_window_cloaked)
+{
+    struct window *win = get_window( req->handle );
+    unsigned int cloaked = 0;
+
+    if (!win)
+    {
+        set_error( STATUS_INVALID_HANDLE );
+        return;
+    }
+    if (!is_desktop_window( win->parent ))
+    {
+        while (!is_desktop_window( win->parent ))
+            win = win->parent;
+        cloaked |= DWM_CLOAKED_INHERITED;
+    }
+
+    if (win->is_cloaked) cloaked |= DWM_CLOAKED_APP;
+    else cloaked = 0;
+
+    reply->cloaked = cloaked;
 }
 
 
