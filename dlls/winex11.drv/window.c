@@ -73,6 +73,7 @@ static const unsigned int net_wm_state_atoms[NB_NET_WM_STATES] =
 {
     XATOM__NET_WM_STATE_FULLSCREEN,
     XATOM__NET_WM_STATE_ABOVE,
+    XATOM__NET_WM_STATE_HIDDEN,
     XATOM__NET_WM_STATE_MAXIMIZED_VERT,
     XATOM__NET_WM_STATE_SKIP_PAGER,
     XATOM__NET_WM_STATE_SKIP_TASKBAR
@@ -1486,7 +1487,7 @@ static void sync_window_position( struct x11drv_win_data *data,
     XWindowChanges changes;
     unsigned int mask = 0;
 
-    if (data->managed && data->iconic) return;
+    if (data->managed && (data->iconic || data->off_desktop)) return;
 
     /* resizing a managed maximized window is not allowed */
     if (!(style & WS_MAXIMIZE) || !data->managed)
@@ -2943,7 +2944,7 @@ UINT CDECL X11DRV_ShowWindow( HWND hwnd, INT cmd, RECT *rect, UINT swp )
         }
         goto done;
     }
-    if (!data->managed || !data->mapped || data->iconic) goto done;
+    if (!data->managed || !data->mapped || data->iconic || data->off_desktop) goto done;
 
     /* only fetch the new rectangle if the ShowWindow was a result of a window manager event */
 
@@ -3006,6 +3007,14 @@ DWORD CDECL X11DRV_SetWindowCompositionAttribute( HWND hwnd, DWORD attribute, vo
             return ~0;
         }
         ret = *(BOOL*)attr_data ? SET_WINDOW_CLOAKED_ON : 0;
+
+        if (data->shell_cloak)
+        {
+            ret |= SET_WINDOW_CLOAKED_SHELL;
+            data->shell_cloak = FALSE;
+            release_win_data( data );
+            break;
+        }
 
         /* If the owner is cloaked, manual uncloaking is not allowed */
         if (!ret && (owner = GetWindow( hwnd, GW_OWNER )))
