@@ -2388,6 +2388,7 @@ enum message_type
     VARARG(windows,user_handles); /* window handles that inherit it */
 @END
 #define SET_WINDOW_CLOAKED_ON     0x01
+#define SET_WINDOW_CLOAKED_SHELL  0x02
 
 
 /* Set the parent of a window */
