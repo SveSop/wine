@@ -47,6 +47,7 @@
 #include "winuser.h"
 #include "wine/unicode.h"
 
+#include "dwmapi.h"
 #include "wine/debug.h"
 #include "wine/server.h"
 
@@ -497,7 +498,7 @@ static void sync_window_region( struct x11drv_win_data *data, HRGN win_region )
 
     data->shaped = FALSE;
 
-    if (IsRectEmpty( &data->window_rect ))  /* set an empty shape */
+    if (IsRectEmpty( &data->window_rect ) || data->cloaked)  /* set an empty shape */
     {
         static XRectangle empty_rect;
         XShapeCombineRectangles( data->display, data->whole_window, ShapeBounding, 0, 0,
@@ -1904,7 +1905,13 @@ static void create_whole_window( struct x11drv_win_data *data )
     if (win_rgn || IsRectEmpty( &data->window_rect )) sync_window_region( data, win_rgn );
 
     /* set the window opacity */
-    if (!GetLayeredWindowAttributes( data->hwnd, &key, &alpha, &layered_flags )) layered_flags = 0;
+    if (data->cloaked)
+    {
+        key = 0;
+        alpha = 0;
+        layered_flags = LWA_ALPHA;
+    }
+    else if (!GetLayeredWindowAttributes( data->hwnd, &key, &alpha, &layered_flags )) layered_flags = 0;
     set_window_opacity( data->display, data->whole_window, (layered_flags & LWA_ALPHA) ? alpha : 0xff );
 
     XFlush( data->display );  /* make sure the window exists before we start painting to it */
@@ -2047,7 +2054,7 @@ void CDECL X11DRV_SetWindowStyle( HWND hwnd, INT offset, STYLESTRUCT *style )
     {
         data->layered = FALSE;
         set_window_visual( data, &default_visual, FALSE );
-        set_window_opacity( data->display, data->whole_window, 0xff );
+        if (!data->cloaked) set_window_opacity( data->display, data->whole_window, 0xff );
         if (data->surface) set_surface_color_key( data->surface, CLR_INVALID );
     }
 done:
@@ -2982,6 +2989,80 @@ done:
 
 
 /**********************************************************************
+ *		SetWindowCompositionAttribute  (X11DRV.@)
+ */
+DWORD CDECL X11DRV_SetWindowCompositionAttribute( HWND hwnd, DWORD attribute, void *attr_data )
+{
+    struct x11drv_win_data *data;
+    DWORD ret = 0;
+    HWND owner;
+
+    switch (attribute)
+    {
+    case WCA_CLOAK:
+        if (!(data = get_win_data( hwnd )))
+        {
+            SetLastError( ERROR_INVALID_HANDLE );
+            return ~0;
+        }
+        ret = *(BOOL*)attr_data ? SET_WINDOW_CLOAKED_ON : 0;
+
+        /* If the owner is cloaked, manual uncloaking is not allowed */
+        if (!ret && (owner = GetWindow( hwnd, GW_OWNER )))
+        {
+            struct x11drv_win_data *owner_data = get_win_data( owner );
+            DWORD cloaked = 0;
+            if (owner_data)
+            {
+                cloaked = owner_data->cloaked ? DWM_CLOAKED_APP : 0;
+                release_win_data( owner_data );
+            }
+            else
+            {
+                SERVER_START_REQ( get_window_cloaked )
+                {
+                    req->handle = wine_server_user_handle( owner );
+                    if (!wine_server_call( req )) cloaked = reply->cloaked;
+                }
+                SERVER_END_REQ;
+            }
+            if (cloaked)
+            {
+                release_win_data( data );
+                SetLastError( ERROR_INVALID_PARAMETER );
+                return ~0;
+            }
+        }
+
+        if (!data->cloaked != !ret)
+        {
+#ifdef HAVE_LIBXSHAPE
+            DWORD layered_flags = LWA_ALPHA;
+            COLORREF key = 0;
+            BYTE alpha = 0;
+
+            data->cloaked = ret;
+            if (!ret && !GetLayeredWindowAttributes( hwnd, &key, &alpha, &layered_flags ))
+                layered_flags = 0;
+
+            set_window_opacity( data->display, data->whole_window, (layered_flags & LWA_ALPHA) ? alpha : 0xff );
+            sync_window_region( data, (HRGN)1 );
+#else
+            FIXME("libXshape is not available, but cloaking requires it.\n");
+            SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+            ret = ~0;
+#endif
+        }
+        release_win_data( data );
+        break;
+    default:
+        break;
+    }
+    return ret;
+}
+
+
+/**********************************************************************
  *		SetWindowIcon (X11DRV.@)
  *
  * hIcon or hIconSm has changed (or is being initialised for the
@@ -3040,7 +3121,7 @@ void CDECL X11DRV_SetLayeredWindowAttributes( HWND hwnd, COLORREF key, BYTE alph
     {
         set_window_visual( data, &default_visual, FALSE );
 
-        if (data->whole_window)
+        if (data->whole_window && !data->cloaked)
             set_window_opacity( data->display, data->whole_window, (flags & LWA_ALPHA) ? alpha : 0xff );
         if (data->surface)
             set_surface_color_key( data->surface, (flags & LWA_COLORKEY) ? key : CLR_INVALID );
@@ -3065,9 +3146,20 @@ void CDECL X11DRV_SetLayeredWindowAttributes( HWND hwnd, COLORREF key, BYTE alph
         Window win = X11DRV_get_whole_window( hwnd );
         if (win)
         {
-            set_window_opacity( gdi_display, win, (flags & LWA_ALPHA) ? alpha : 0xff );
-            if (flags & LWA_COLORKEY)
-                FIXME( "LWA_COLORKEY not supported on foreign process window %p\n", hwnd );
+            DWORD cloaked = 0;
+
+            SERVER_START_REQ( get_window_cloaked )
+            {
+                req->handle = wine_server_user_handle( hwnd );
+                if (!wine_server_call( req )) cloaked = reply->cloaked;
+            }
+            SERVER_END_REQ;
+            if (!cloaked)
+            {
+                set_window_opacity( gdi_display, win, (flags & LWA_ALPHA) ? alpha : 0xff );
+                if (flags & LWA_COLORKEY)
+                    FIXME( "LWA_COLORKEY not supported on foreign process window %p\n", hwnd );
+            }
         }
     }
 }
