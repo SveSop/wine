@@ -84,6 +84,7 @@ struct window
     unsigned int     is_linked : 1;   /* is it linked into the parent z-order list? */
     unsigned int     is_layered : 1;  /* has layered info been set? */
     unsigned int     is_cloaked : 1;  /* is the window cloaked by the app? */
+    unsigned int     is_cloaked_by_shell : 1;
     unsigned int     color_key;       /* color key for a layered window */
     unsigned int     alpha;           /* alpha value for a layered window */
     unsigned int     layered_flags;   /* flags for a layered window */
@@ -508,6 +509,7 @@ static struct window *create_window( struct window *parent, struct window *owner
     win->is_linked      = 0;
     win->is_layered     = 0;
     win->is_cloaked     = 0;
+    win->is_cloaked_by_shell = 0;
     win->dpi_awareness  = DPI_AWARENESS_PER_MONITOR_AWARE;
     win->dpi            = 0;
     win->user_data      = 0;
@@ -611,7 +613,7 @@ int is_child_window( user_handle_t parent, user_handle_t child )
 int is_valid_foreground_window( user_handle_t window )
 {
     struct window *win = get_user_object( window, USER_WINDOW );
-    return win && (win->style & (WS_POPUP|WS_CHILD)) != WS_CHILD;
+    return win && (win->style & (WS_POPUP|WS_CHILD)) != WS_CHILD && !win->is_cloaked_by_shell;
 }
 
 /* make a window active if possible */
@@ -792,7 +794,7 @@ static int get_window_children_from_point( struct window *parent, int x, int y,
     {
         int x_child = x, y_child = y;
 
-        if (is_desktop_window( parent ) && ptr->is_cloaked) continue;
+        if (is_desktop_window( parent ) && (ptr->is_cloaked || ptr->is_cloaked_by_shell)) continue;
         if (!is_point_in_window( ptr, &x_child, &y_child, parent->dpi )) continue;  /* skip it */
 
         /* if point is in client area, and window is not minimized or disabled, check children */
@@ -2205,7 +2207,8 @@ DECL_HANDLER(get_window_cloaked)
         cloaked |= DWM_CLOAKED_INHERITED;
     }
 
-    if (win->is_cloaked) cloaked |= DWM_CLOAKED_APP;
+    if (win->is_cloaked_by_shell) cloaked |= DWM_CLOAKED_SHELL;
+    else if (win->is_cloaked) cloaked |= DWM_CLOAKED_APP;
     else cloaked = 0;
 
     reply->cloaked = cloaked;
@@ -2220,6 +2223,13 @@ DECL_HANDLER(set_window_cloaked)
     user_handle_t *data;
 
     if (!win) return;
+    if (req->cloaked & SET_WINDOW_CLOAKED_SHELL)
+    {
+        /* the shell has control over cloaking windows individually */
+        win->is_cloaked_by_shell = req->cloaked & SET_WINDOW_CLOAKED_ON;
+        reply->count = 0;
+        return;
+    }
     if (is_desktop_window( win ))
     {
         set_error( STATUS_ACCESS_DENIED );

@@ -460,6 +460,7 @@ enum x11drv_atoms
     XATOM__NET_WM_STATE_ABOVE,
     XATOM__NET_WM_STATE_DEMANDS_ATTENTION,
     XATOM__NET_WM_STATE_FULLSCREEN,
+    XATOM__NET_WM_STATE_HIDDEN,
     XATOM__NET_WM_STATE_MAXIMIZED_HORZ,
     XATOM__NET_WM_STATE_MAXIMIZED_VERT,
     XATOM__NET_WM_STATE_SKIP_PAGER,
@@ -557,6 +558,7 @@ enum x11drv_net_wm_state
 {
     NET_WM_STATE_FULLSCREEN,
     NET_WM_STATE_ABOVE,
+    NET_WM_STATE_HIDDEN,
     NET_WM_STATE_MAXIMIZED,
     NET_WM_STATE_SKIP_PAGER,
     NET_WM_STATE_SKIP_TASKBAR,
@@ -585,6 +587,8 @@ struct x11drv_win_data
     BOOL        shaped : 1;     /* is window using a custom region shape? */
     BOOL        layered : 1;    /* is window layered and with valid attributes? */
     BOOL        use_alpha : 1;  /* does window use an alpha channel? */
+    BOOL        off_desktop : 1;/* is window on another WM desktop? */
+    BOOL        shell_cloak : 1;/* the shell is (un)cloaking the window */
     BOOL        fs_hack : 1;
     BOOL        pending_fullscreen : 1;
     ULONGLONG   take_focus_back;
