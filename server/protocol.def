@@ -2371,6 +2371,14 @@ enum message_type
 #define SET_WIN_UNICODE   0x40
 
 
+/* Get the window's cloaked attribute */
+@REQ(get_window_cloaked)
+    user_handle_t  handle;        /* handle to the window */
+@REPLY
+    unsigned int   cloaked;       /* cloaked attribute (DMW_CLOAKED_*) */
+@END
+
+
 /* Set the window's cloaked attribute */
 @REQ(set_window_cloaked)
     user_handle_t  handle;        /* handle to the window */

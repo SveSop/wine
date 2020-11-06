@@ -4377,6 +4377,49 @@ BOOL WINAPI SetWindowDisplayAffinity(HWND hwnd, DWORD affinity)
 }
 
 /**********************************************************************
+ *              GetWindowCompositionAttribute (USER32.@)
+ */
+BOOL WINAPI GetWindowCompositionAttribute(HWND hwnd, const struct WINCOMPATTRDATA *data)
+{
+    TRACE("(%p, %p)\n", hwnd, data);
+
+    if (!data || !data->pData)
+    {
+        SetLastError(ERROR_NOACCESS);
+        return FALSE;
+    }
+    if (!hwnd || is_broadcast(hwnd))
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+
+    switch (data->attribute)
+    {
+    case WCA_CLOAKED:
+        if (data->dataSize < sizeof(DWORD))
+        {
+            SetLastError( ERROR_INSUFFICIENT_BUFFER );
+            return FALSE;
+        }
+        SERVER_START_REQ( get_window_cloaked )
+        {
+            req->handle = wine_server_user_handle( hwnd );
+            if (wine_server_call_err( req )) return FALSE;
+            *(DWORD*)(data->pData) = reply->cloaked;
+        }
+        SERVER_END_REQ;
+        break;
+
+    default:
+        FIXME("unimplemented attribute %d, size %u, for hwnd %p.\n", data->attribute, data->dataSize, hwnd);
+        SetLastError( ERROR_CALL_NOT_IMPLEMENTED );
+        return FALSE;
+    }
+    return TRUE;
+}
+
+/**********************************************************************
  *              SetWindowCompositionAttribute (USER32.@)
  */
 BOOL WINAPI SetWindowCompositionAttribute(HWND hwnd, const struct WINCOMPATTRDATA *data)
