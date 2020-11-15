@@ -1054,7 +1054,7 @@ static void init_new_decoded_pad(GstElement *bin, GstPad *pad, struct gstdemux *
 
     if (!strcmp(typename, "video/x-raw"))
     {
-        GstElement *deinterlace, *vconv, *flip, *vconv2;
+        GstElement *deinterlace, *vconv, *yuvfix, *flip, *vconv2, *yuvfix2;
 
         /* DirectShow can express interlaced video, but downstream filters can't
          * necessarily consume it. In particular, the video renderer can't. */
@@ -1075,6 +1075,13 @@ static void init_new_decoded_pad(GstElement *bin, GstPad *pad, struct gstdemux *
             goto out;
         }
 
+        /* To avoid expensive color matrix conversions, keep YUV colorimetry info */
+        if (!(yuvfix = gst_element_factory_make("yuvfixup", NULL)))
+        {
+            ERR("Failed to create our yuvfixup element\n");
+            goto out;
+        }
+
         /* GStreamer outputs RGB video top-down, but DirectShow expects bottom-up. */
         if (!(flip = gst_element_factory_make("videoflip", NULL)))
         {
@@ -1092,22 +1099,35 @@ static void init_new_decoded_pad(GstElement *bin, GstPad *pad, struct gstdemux *
             goto out;
         }
 
+        /* To avoid expensive color matrix conversions, keep YUV colorimetry info */
+        if (!(yuvfix2 = gst_element_factory_make("yuvfixup", NULL)))
+        {
+            ERR("Failed to create our yuvfixup2 element\n");
+            goto out;
+        }
+
         /* The bin takes ownership of these elements. */
         gst_bin_add(GST_BIN(This->container), deinterlace);
         gst_element_sync_state_with_parent(deinterlace);
         gst_bin_add(GST_BIN(This->container), vconv);
         gst_element_sync_state_with_parent(vconv);
+        gst_bin_add(GST_BIN(This->container), yuvfix);
+        gst_element_sync_state_with_parent(yuvfix);
         gst_bin_add(GST_BIN(This->container), flip);
         gst_element_sync_state_with_parent(flip);
         gst_bin_add(GST_BIN(This->container), vconv2);
         gst_element_sync_state_with_parent(vconv2);
+        gst_bin_add(GST_BIN(This->container), yuvfix2);
+        gst_element_sync_state_with_parent(yuvfix2);
 
         gst_element_link(deinterlace, vconv);
-        gst_element_link(vconv, flip);
+        gst_element_link(vconv, yuvfix);
+        gst_element_link(yuvfix, flip);
         gst_element_link(flip, vconv2);
+        gst_element_link(vconv2, yuvfix2);
 
         pin->post_sink = gst_element_get_static_pad(deinterlace, "sink");
-        pin->post_src = gst_element_get_static_pad(vconv2, "src");
+        pin->post_src = gst_element_get_static_pad(yuvfix2, "src");
         pin->flip = flip;
     }
     else if (!strcmp(typename, "audio/x-raw"))
