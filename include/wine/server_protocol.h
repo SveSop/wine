@@ -815,6 +815,12 @@ typedef struct
     lparam_t info;
 } cursor_pos_t;
 
+struct cpu_topology_override
+{
+    unsigned int cpu_count;
+    unsigned char host_cpu_id[64];
+};
+
 
 
 
@@ -948,6 +954,7 @@ struct init_thread_request
     int          wait_fd;
     client_ptr_t teb;
     client_ptr_t entry;
+    /* VARARG(cpu_override,cpu_topology_override); */
 };
 struct init_thread_reply
 {
