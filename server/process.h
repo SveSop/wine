@@ -87,6 +87,7 @@ struct process
     const struct rawinput_device *rawinput_mouse; /* rawinput mouse device, if any */
     const struct rawinput_device *rawinput_kbd;   /* rawinput keyboard device, if any */
     struct list          kernel_object;   /* list of kernel object pointers */
+    struct cpu_topology_override cpu_override; /* Overridden CPUs to host CPUs mapping. */
 };
 
 /* process functions */
