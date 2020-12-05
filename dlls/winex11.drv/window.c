@@ -1008,7 +1008,8 @@ void update_net_wm_states( struct x11drv_win_data *data )
         new_state |= (1 << NET_WM_STATE_MAXIMIZED);
 
     ex_style = GetWindowLongW( data->hwnd, GWL_EXSTYLE );
-    if (ex_style & WS_EX_TOPMOST)
+    if ((ex_style & WS_EX_TOPMOST) &&
+            !(new_state & (1 << NET_WM_STATE_FULLSCREEN)))
         new_state |= (1 << NET_WM_STATE_ABOVE);
     if (ex_style & (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE))
         new_state |= (1 << NET_WM_STATE_SKIP_TASKBAR) | (1 << NET_WM_STATE_SKIP_PAGER);
