@@ -619,28 +619,39 @@ affinity_t get_thread_affinity( struct thread *thread )
 #define THREAD_PRIORITY_REALTIME_HIGHEST 6
 #define THREAD_PRIORITY_REALTIME_LOWEST -7
 
+int set_thread_priority( struct thread *thread, int priority_class, int priority )
+{
+    int max = THREAD_PRIORITY_HIGHEST;
+    int min = THREAD_PRIORITY_LOWEST;
+    if (priority_class == PROCESS_PRIOCLASS_REALTIME)
+    {
+        max = THREAD_PRIORITY_REALTIME_HIGHEST;
+        min = THREAD_PRIORITY_REALTIME_LOWEST;
+    }
+    if ((priority < min || priority > max) &&
+        priority != THREAD_PRIORITY_IDLE &&
+        priority != THREAD_PRIORITY_TIME_CRITICAL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (thread->process->priority == priority_class &&
+        thread->priority == priority)
+        return 0;
+    thread->priority = priority;
+
+    return 0;
+}
+
 /* set all information about a thread */
 static void set_thread_info( struct thread *thread,
                              const struct set_thread_info_request *req )
 {
     if (req->mask & SET_THREAD_INFO_PRIORITY)
     {
-        int max = THREAD_PRIORITY_HIGHEST;
-        int min = THREAD_PRIORITY_LOWEST;
-        if (thread->process->priority == PROCESS_PRIOCLASS_REALTIME)
-        {
-            max = THREAD_PRIORITY_REALTIME_HIGHEST;
-            min = THREAD_PRIORITY_REALTIME_LOWEST;
-        }
-        if ((req->priority >= min && req->priority <= max) ||
-            req->priority == THREAD_PRIORITY_IDLE ||
-            req->priority == THREAD_PRIORITY_TIME_CRITICAL)
-        {
-            thread->priority = req->priority;
-            set_scheduler_priority( thread );
-        }
-        else
-            set_error( STATUS_INVALID_PARAMETER );
+        if (set_thread_priority( thread, thread->process->priority, req->priority ))
+            file_set_error();
     }
     if (req->mask & SET_THREAD_INFO_AFFINITY)
     {
