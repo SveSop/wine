@@ -1960,6 +1960,9 @@ void __wine_main( int argc, char *argv[], char *envp[] )
 #ifdef RLIMIT_AS
     set_max_limit( RLIMIT_AS );
 #endif
+#ifdef RLIMIT_NICE
+    set_max_limit( RLIMIT_NICE );
+#endif
 
     virtual_init();
     signal_init_early();
