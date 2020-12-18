@@ -276,6 +276,10 @@ static const WCHAR type_WindowStation[] = {'W','i','n','d','o','w','S','t','a','
 extern void init_types(void);
 extern unsigned int type_get_index( struct object_type *type );
 
+/* thread functions */
+
+extern void init_threading(void);
+
 /* symbolic link functions */
 
 extern struct object *create_obj_symlink( struct object *root, const struct unicode_str *name,
