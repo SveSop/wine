@@ -150,6 +150,7 @@ int main( int argc, char *argv[] )
     init_scheduler();
     init_signals();
     init_directories( load_intl_file() );
+    init_threading();
     init_registry();
     init_types();
     main_loop();
