@@ -154,7 +154,10 @@ void fsync_init(void)
 
     is_fsync_initialized = 1;
 
-    fprintf( stderr, "fsync: up and running.\n" );
+    if (nr_futex2_wake)
+        fprintf( stderr, "futex2: up and running.\n" );
+    else
+        fprintf( stderr, "fsync: up and running.\n" );
 
     atexit( shm_cleanup );
 }
