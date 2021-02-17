@@ -53,6 +53,9 @@
 #include "unix_private.h"
 #include "fsync.h"
 
+
+#define TICKS_1601_TO_1970 (SECS_1601_TO_1970 * TICKSPERSEC)
+
 WINE_DEFAULT_DEBUG_CHANNEL(fsync);
 
 #include "pshpack4.h"
