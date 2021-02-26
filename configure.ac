@@ -172,6 +172,7 @@ case $host in
       host_cpu="x86_64"
       notice_platform="64-bit "
       TARGETFLAGS="-m64"
+      enable_wow64cpu=${enable_wow64cpu:-yes}
     fi
     ;;
   arm*)
@@ -230,6 +231,7 @@ esac
 dnl enable_win16 defaults to yes on x86, to no on other CPUs
 enable_win16=${enable_win16:-no}
 enable_win64=${enable_win64:-no}
+enable_wow64cpu=${enable_wow64cpu:-no}
 if test "x$enable_win64" != "xyes"
 then
   enable_win32="yes"
@@ -3949,6 +3951,7 @@ WINE_CONFIG_MAKEFILE(dlls/wmvcore)
 WINE_CONFIG_MAKEFILE(dlls/wmvcore/tests)
 WINE_CONFIG_MAKEFILE(dlls/wnaspi32)
 WINE_CONFIG_MAKEFILE(dlls/wow32,enable_win16)
+WINE_CONFIG_MAKEFILE(dlls/wow64cpu)
 WINE_CONFIG_MAKEFILE(dlls/wpc)
 WINE_CONFIG_MAKEFILE(dlls/wpc/tests)
 WINE_CONFIG_MAKEFILE(dlls/wpcap)
