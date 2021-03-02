@@ -897,10 +897,12 @@
 @ stdcall RtlQueryProcessDebugInformation(long long ptr)
 @ stub RtlQueryProcessHeapInformation
 @ stub RtlQueryProcessLockInformation
+@ stdcall RtlQueryProcessPlaceholderCompatibilityMode()
 @ stub RtlQueryProperties
 @ stub RtlQueryPropertyNames
 @ stub RtlQueryPropertySet
 @ stdcall RtlQueryRegistryValues(long ptr ptr ptr ptr)
+@ stdcall RtlQueryRegistryValuesEx(long ptr ptr ptr ptr)
 @ stub RtlQuerySecurityObject
 @ stub RtlQueryTagHeap
 @ stdcall RtlQueryTimeZoneInformation(ptr)
