@@ -82,6 +82,7 @@ static const struct object_ops object_type_ops =
     default_unlink_name,          /* unlink_name */
     no_open_file,                 /* open_file */
     no_kernel_obj_list,           /* get_kernel_obj_list */
+    no_get_fast_sync,             /* get_fast_sync */
     no_close_handle,              /* close_handle */
     no_destroy                    /* destroy */
 };
@@ -132,6 +133,7 @@ static const struct object_ops directory_ops =
     default_unlink_name,          /* unlink_name */
     no_open_file,                 /* open_file */
     no_kernel_obj_list,           /* get_kernel_obj_list */
+    no_get_fast_sync,             /* get_fast_sync */
     no_close_handle,              /* close_handle */
     directory_destroy             /* destroy */
 };
