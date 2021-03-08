@@ -37,6 +37,8 @@
 #include "winternl.h"
 
 #include "file.h"
+#include "handle.h"
+#include "request.h"
 #include "thread.h"
 
 #ifdef HAVE_LINUX_WINESYNC_H
@@ -327,6 +329,12 @@ void fast_abandon_mutexes( thread_id_t tid )
 
 #else
 
+static struct fast_sync_device *get_fast_sync_device(void)
+{
+    set_error( STATUS_NOT_IMPLEMENTED );
+    return NULL;
+}
+
 struct fast_sync *fast_create_event( enum fast_sync_type type, int manual_reset, int signaled )
 {
     set_error( STATUS_NOT_IMPLEMENTED );
@@ -358,3 +366,18 @@ void fast_abandon_mutexes( thread_id_t tid )
 }
 
 #endif
+
+DECL_HANDLER(get_fast_sync_device)
+{
+#ifdef HAVE_LINUX_WINESYNC_H
+    struct fast_sync_device *device;
+
+    if ((device = get_fast_sync_device()))
+    {
+        reply->handle = alloc_handle( current->process, device, 0, 0 );
+        release_object( device );
+    }
+#else
+    set_error( STATUS_NOT_IMPLEMENTED );
+#endif
+}
