@@ -3736,7 +3736,7 @@ struct handle_info
 
 enum fast_sync_type
 {
-    FAST_SYNC_SEMAPHORE,
+    FAST_SYNC_SEMAPHORE = 1,
     FAST_SYNC_MUTEX,
     FAST_SYNC_EVENT,
     FAST_SYNC_SERVER,
