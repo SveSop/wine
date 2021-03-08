@@ -80,6 +80,7 @@ static unsigned int process_map_access( struct object *obj, unsigned int access 
 static struct security_descriptor *process_get_sd( struct object *obj );
 static void process_poll_event( struct fd *fd, int event );
 static struct list *process_get_kernel_obj_list( struct object *obj );
+static struct fast_sync *process_get_fast_sync( struct object *obj );
 static void process_destroy( struct object *obj );
 static void terminate_process( struct process *process, struct thread *skip, int exit_code );
 
@@ -103,7 +104,7 @@ static const struct object_ops process_ops =
     NULL,                        /* unlink_name */
     no_open_file,                /* open_file */
     process_get_kernel_obj_list, /* get_kernel_obj_list */
-    no_get_fast_sync,            /* get_fast_sync */
+    process_get_fast_sync,       /* get_fast_sync */
     no_close_handle,             /* close_handle */
     process_destroy              /* destroy */
 };
@@ -555,6 +556,7 @@ struct process *create_process( int fd, struct process *parent, unsigned int fla
     process->trace_data      = 0;
     process->rawinput_mouse  = NULL;
     process->rawinput_kbd    = NULL;
+    process->fast_sync       = NULL;
     list_init( &process->kernel_object );
     list_init( &process->thread_list );
     list_init( &process->locks );
@@ -657,6 +659,8 @@ static void process_destroy( struct object *obj )
     if (process->token) release_object( process->token );
     free( process->dir_cache );
     free( process->image );
+
+    if (process->fast_sync) release_object( process->fast_sync );
 }
 
 /* dump a process on stdout for debugging purposes */
@@ -686,6 +690,16 @@ static struct list *process_get_kernel_obj_list( struct object *obj )
 {
     struct process *process = (struct process *)obj;
     return &process->kernel_object;
+}
+
+static struct fast_sync *process_get_fast_sync( struct object *obj )
+{
+    struct process *process = (struct process *)obj;
+
+    if (!process->fast_sync)
+        process->fast_sync = fast_create_event( FAST_SYNC_SERVER, 1, !process->running_threads );
+    if (process->fast_sync) grab_object( process->fast_sync );
+    return process->fast_sync;
 }
 
 static struct security_descriptor *process_get_sd( struct object *obj )
@@ -868,6 +882,7 @@ static void process_killed( struct process *process )
     release_job_process( process );
     start_sigkill_timer( process );
     wake_up( &process->obj, 0 );
+    fast_set_event( process->fast_sync );
 }
 
 /* add a thread to a process running threads list */
