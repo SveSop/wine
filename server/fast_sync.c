@@ -381,3 +381,27 @@ DECL_HANDLER(get_fast_sync_device)
     set_error( STATUS_NOT_IMPLEMENTED );
 #endif
 }
+
+DECL_HANDLER(get_fast_sync_obj)
+{
+#ifdef HAVE_LINUX_WINESYNC_H
+    struct object *obj;
+
+    if ((obj = get_handle_obj( current->process, req->handle, 0, NULL )))
+    {
+        struct fast_sync *fast_sync;
+
+        if ((fast_sync = obj->ops->get_fast_sync( obj )))
+        {
+            reply->handle = alloc_handle( current->process, fast_sync, 0, 0 );
+            reply->obj = fast_sync->linux_obj;
+            reply->type = fast_sync->type;
+            reply->access = get_handle_access( current->process, req->handle );
+            release_object( fast_sync );
+        }
+        release_object( obj );
+    }
+#else
+    set_error( STATUS_NOT_IMPLEMENTED );
+#endif
+}

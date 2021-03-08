@@ -3787,3 +3787,14 @@ enum fast_sync_type
 @REPLY
     obj_handle_t handle;          /* handle to the device */
 @END
+
+
+/* Get the fast synchronization object associated with the given handle */
+@REQ(get_fast_sync_obj)
+    obj_handle_t handle;          /* handle to the object */
+@REPLY
+    obj_handle_t handle;          /* handle to the fast synchronization object */
+    int          obj;             /* linux object */
+    int          type;            /* object type */
+    unsigned int access;          /* handle access rights */
+@END
