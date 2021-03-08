@@ -3732,3 +3732,13 @@ struct handle_info
 @REPLY
     obj_handle_t handle;       /* next thread handle */
 @END
+
+
+enum fast_sync_type
+{
+    FAST_SYNC_SEMAPHORE,
+    FAST_SYNC_MUTEX,
+    FAST_SYNC_EVENT,
+    FAST_SYNC_SERVER,
+    FAST_SYNC_QUEUE,
+};
