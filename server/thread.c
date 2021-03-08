@@ -175,6 +175,7 @@ static int thread_signaled( struct object *obj, struct wait_queue_entry *entry )
 static unsigned int thread_map_access( struct object *obj, unsigned int access );
 static void thread_poll_event( struct fd *fd, int event );
 static struct list *thread_get_kernel_obj_list( struct object *obj );
+static struct fast_sync *thread_get_fast_sync( struct object *obj );
 static void destroy_thread( struct object *obj );
 
 static const struct object_ops thread_ops =
@@ -197,7 +198,7 @@ static const struct object_ops thread_ops =
     NULL,                       /* unlink_name */
     no_open_file,               /* open_file */
     thread_get_kernel_obj_list, /* get_kernel_obj_list */
-    no_get_fast_sync,           /* get_fast_sync */
+    thread_get_fast_sync,       /* get_fast_sync */
     no_close_handle,            /* close_handle */
     destroy_thread              /* destroy */
 };
@@ -245,6 +246,7 @@ static inline void init_thread_structure( struct thread *thread )
     thread->token           = NULL;
     thread->desc            = NULL;
     thread->desc_len        = 0;
+    thread->fast_sync       = NULL;
     thread->exit_poll       = NULL;
 
     thread->creation_time = current_time;
@@ -395,6 +397,16 @@ static struct list *thread_get_kernel_obj_list( struct object *obj )
     return &thread->kernel_object;
 }
 
+static struct fast_sync *thread_get_fast_sync( struct object *obj )
+{
+    struct thread *thread = (struct thread *)obj;
+
+    if (!thread->fast_sync)
+        thread->fast_sync = fast_create_event( FAST_SYNC_SERVER, 1, thread->state == TERMINATED );
+    if (thread->fast_sync) grab_object( thread->fast_sync );
+    return thread->fast_sync;
+}
+
 /* cleanup everything that is no longer needed by a dead thread */
 /* used by destroy_thread and kill_thread */
 static void cleanup_thread( struct thread *thread )
@@ -450,6 +462,7 @@ static void destroy_thread( struct object *obj )
     if (thread->exit_poll) remove_timeout_user( thread->exit_poll );
     if (thread->id) free_ptid( thread->id );
     if (thread->token) release_object( thread->token );
+    if (thread->fast_sync) release_object( thread->fast_sync );
 }
 
 /* dump a thread on stdout for debugging purposes */
@@ -1324,7 +1337,11 @@ void kill_thread( struct thread *thread, int violent_death )
         send_thread_signal( thread, SIGQUIT );
         check_terminated( thread );
     }
-    else wake_up( &thread->obj, 0 );
+    else
+    {
+        wake_up( &thread->obj, 0 );
+        fast_set_event( thread->fast_sync );
+    }
     cleanup_thread( thread );
     remove_process_thread( thread->process, thread );
     release_object( thread );
