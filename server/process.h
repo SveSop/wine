@@ -88,6 +88,7 @@ struct process
     const struct rawinput_device *rawinput_kbd;   /* rawinput keyboard device, if any */
     struct list          kernel_object;   /* list of kernel object pointers */
     struct cpu_topology_override cpu_override; /* Overridden CPUs to host CPUs mapping. */
+    struct fast_sync    *fast_sync;       /* fast synchronization object */
 };
 
 /* process functions */
