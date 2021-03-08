@@ -90,6 +90,7 @@ static const struct object_ops mailslot_ops =
     default_unlink_name,       /* unlink_name */
     mailslot_open_file,        /* open_file */
     no_kernel_obj_list,        /* get_kernel_obj_list */
+    no_get_fast_sync,          /* get_fast_sync */
     no_close_handle,           /* close_handle */
     mailslot_destroy           /* destroy */
 };
@@ -148,6 +149,7 @@ static const struct object_ops mail_writer_ops =
     NULL,                       /* unlink_name */
     no_open_file,               /* open_file */
     no_kernel_obj_list,         /* get_kernel_obj_list */
+    no_get_fast_sync,           /* get_fast_sync */
     no_close_handle,            /* close_handle */
     mail_writer_destroy         /* destroy */
 };
@@ -210,6 +212,7 @@ static const struct object_ops mailslot_device_ops =
     default_unlink_name,            /* unlink_name */
     mailslot_device_open_file,      /* open_file */
     no_kernel_obj_list,             /* get_kernel_obj_list */
+    no_get_fast_sync,               /* get_fast_sync */
     no_close_handle,                /* close_handle */
     mailslot_device_destroy         /* destroy */
 };
@@ -240,6 +243,7 @@ static const struct object_ops mailslot_device_file_ops =
     NULL,                                   /* unlink_name */
     no_open_file,                           /* open_file */
     no_kernel_obj_list,                     /* get_kernel_obj_list */
+    no_get_fast_sync,                       /* get_fast_sync */
     no_close_handle,                        /* close_handle */
     mailslot_device_file_destroy            /* destroy */
 };
