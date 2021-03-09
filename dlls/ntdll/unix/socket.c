@@ -91,7 +91,7 @@ static async_data_t server_async( HANDLE handle, struct async_fileio *user, HAND
 
 static NTSTATUS wait_async( HANDLE handle, BOOL alertable )
 {
-    return NtWaitForSingleObject( handle, alertable, NULL );
+    return server_wait_for_object( handle, alertable, NULL );
 }
 
 union unix_sockaddr
