@@ -4960,7 +4960,7 @@ static async_data_t server_async( HANDLE handle, struct async_fileio *user, HAND
 
 static NTSTATUS wait_async( HANDLE handle, BOOL alertable, IO_STATUS_BLOCK *io )
 {
-    if (NtWaitForSingleObject( handle, alertable, NULL )) return STATUS_PENDING;
+    if (server_wait_for_object( handle, alertable, NULL )) return STATUS_PENDING;
     return io->u.Status;
 }
 
@@ -6910,7 +6910,7 @@ NTSTATUS WINAPI NtLockFile( HANDLE file, HANDLE event, PIO_APC_ROUTINE apc, void
         }
         if (handle)
         {
-            NtWaitForSingleObject( handle, FALSE, NULL );
+            server_wait_for_object( handle, FALSE, NULL );
             NtClose( handle );
         }
         else  /* Unix lock conflict, sleep a bit and retry */
