@@ -162,6 +162,8 @@ extern unsigned int server_select( const select_op_t *select_op, data_size_t siz
                                    user_apc_t *user_apc ) DECLSPEC_HIDDEN;
 extern unsigned int server_wait( const select_op_t *select_op, data_size_t size, UINT flags,
                                  const LARGE_INTEGER *timeout ) DECLSPEC_HIDDEN;
+extern unsigned int server_wait_for_object( HANDLE handle, BOOL alertable,
+                                            const LARGE_INTEGER *timeout ) DECLSPEC_HIDDEN;
 extern unsigned int server_queue_process_apc( HANDLE process, const apc_call_t *call,
                                               apc_result_t *result ) DECLSPEC_HIDDEN;
 extern int server_get_unix_fd( HANDLE handle, unsigned int wanted_access, int *unix_fd,
