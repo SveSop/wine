@@ -328,6 +328,11 @@ void fast_abandon_mutexes( thread_id_t tid )
     release_object( device );
 }
 
+int fast_user_apc_needs_signal(void)
+{
+    return !!fast_sync_device_object;
+}
+
 #else
 
 static struct fast_sync_device *get_fast_sync_device(void)
@@ -364,6 +369,11 @@ void fast_reset_event( struct fast_sync *obj )
 
 void fast_abandon_mutexes( thread_id_t tid )
 {
+}
+
+int fast_user_apc_needs_signal(void)
+{
+    return 0;
 }
 
 #endif
