@@ -236,6 +236,7 @@ extern struct fast_sync *fast_create_mutex( thread_id_t owner, unsigned int coun
 extern void fast_set_event( struct fast_sync *obj );
 extern void fast_reset_event( struct fast_sync *obj );
 extern void fast_abandon_mutexes( thread_id_t tid );
+extern int fast_user_apc_needs_signal(void);
 
 extern struct fast_sync *no_get_fast_sync( struct object *obj );
 

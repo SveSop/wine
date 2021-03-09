@@ -1139,8 +1139,9 @@ static int queue_apc( struct process *process, struct thread *thread, struct thr
     {
         if (thread->state == TERMINATED) return 0;
         if (!(queue = get_apc_queue( thread, apc->call.type ))) return 1;
-        /* send signal for system APCs if needed */
-        if (queue == &thread->system_apc && list_empty( queue ) && !is_in_apc_wait( thread ))
+        /* send signal if needed */
+        if ((queue == &thread->system_apc || fast_user_apc_needs_signal())
+            && list_empty( queue ) && !is_in_apc_wait( thread ))
         {
             if (!send_thread_signal( thread, SIGUSR1 )) return 0;
         }
