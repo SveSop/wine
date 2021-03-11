@@ -459,6 +459,9 @@
 /* Define to 1 if you have the <linux/videodev2.h> header file. */
 #undef HAVE_LINUX_VIDEODEV2_H
 
+/* Define to 1 if you have the <linux/winesync.h> header file. */
+#undef HAVE_LINUX_WINESYNC_H
+
 /* Define to 1 if you have the `llrint' function. */
 #undef HAVE_LLRINT
 
