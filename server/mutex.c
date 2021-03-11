@@ -57,6 +57,7 @@ struct mutex
     unsigned int   count;           /* recursion count */
     int            abandoned;       /* has it been abandoned? */
     struct list    entry;           /* entry in owner thread mutex list */
+    struct fast_sync *fast_sync;    /* fast synchronization object */
 };
 
 static void mutex_dump( struct object *obj, int verbose );
@@ -64,6 +65,7 @@ static int mutex_signaled( struct object *obj, struct wait_queue_entry *entry );
 static void mutex_satisfied( struct object *obj, struct wait_queue_entry *entry );
 static void mutex_destroy( struct object *obj );
 static int mutex_signal( struct object *obj, unsigned int access );
+static struct fast_sync *mutex_get_fast_sync( struct object *obj );
 
 static const struct object_ops mutex_ops =
 {
@@ -85,7 +87,7 @@ static const struct object_ops mutex_ops =
     default_unlink_name,       /* unlink_name */
     no_open_file,              /* open_file */
     no_kernel_obj_list,        /* get_kernel_obj_list */
-    no_get_fast_sync,          /* get_fast_sync */
+    mutex_get_fast_sync,       /* get_fast_sync */
     no_close_handle,           /* close_handle */
     mutex_destroy              /* destroy */
 };
@@ -128,6 +130,7 @@ static struct mutex *create_mutex( struct object *root, const struct unicode_str
             mutex->owner = NULL;
             mutex->abandoned = 0;
             if (owned) do_grab( mutex, current );
+            mutex->fast_sync = NULL;
         }
     }
     return mutex;
@@ -190,14 +193,27 @@ static int mutex_signal( struct object *obj, unsigned int access )
     return 1;
 }
 
+static struct fast_sync *mutex_get_fast_sync( struct object *obj )
+{
+    struct mutex *mutex = (struct mutex *)obj;
+
+    if (!mutex->fast_sync)
+        mutex->fast_sync = fast_create_mutex( mutex->owner ? mutex->owner->id : 0, mutex->count );
+    if (mutex->fast_sync) grab_object( mutex->fast_sync );
+    return mutex->fast_sync;
+}
+
 static void mutex_destroy( struct object *obj )
 {
     struct mutex *mutex = (struct mutex *)obj;
     assert( obj->ops == &mutex_ops );
 
-    if (!mutex->count) return;
-    mutex->count = 0;
-    do_release( mutex );
+    if (mutex->count)
+    {
+        mutex->count = 0;
+        do_release( mutex );
+    }
+    if (mutex->fast_sync) release_object( mutex->fast_sync );
 }
 
 /* create a mutex */
