@@ -235,6 +235,34 @@ struct fast_sync *fast_create_event( enum fast_sync_type type, int manual_reset,
     return fast_sync;
 }
 
+struct fast_sync *fast_create_semaphore( unsigned int count, unsigned int max )
+{
+    struct winesync_sem_args args = {0};
+    struct fast_sync_device *device;
+    struct fast_sync *fast_sync;
+
+    if (!(device = get_fast_sync_device())) return NULL;
+
+    if (!(fast_sync = alloc_object( &fast_sync_ops ))) return NULL;
+
+    fast_sync->device = device;
+    fast_sync->type = FAST_SYNC_SEMAPHORE;
+    fast_sync->linux_obj = -1;
+
+    args.count = count;
+    args.max = max;
+    args.flags = WINESYNC_SEM_GETONWAIT;
+    if (ioctl( get_unix_fd( device->fd ), WINESYNC_IOC_CREATE_SEM, &args ) < 0)
+    {
+        file_set_error();
+        release_object( fast_sync );
+        return NULL;
+    }
+    fast_sync->linux_obj = args.sem;
+
+    return fast_sync;
+}
+
 void fast_set_event( struct fast_sync *fast_sync )
 {
     struct winesync_sem_args args = {0};
@@ -260,6 +288,12 @@ void fast_reset_event( struct fast_sync *fast_sync )
 #else
 
 struct fast_sync *fast_create_event( enum fast_sync_type type, int manual_reset, int signaled )
+{
+    set_error( STATUS_NOT_IMPLEMENTED );
+    return NULL;
+}
+
+struct fast_sync *fast_create_semaphore( unsigned int count, unsigned int max )
 {
     set_error( STATUS_NOT_IMPLEMENTED );
     return NULL;
