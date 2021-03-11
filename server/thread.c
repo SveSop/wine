@@ -1318,6 +1318,7 @@ void kill_thread( struct thread *thread, int violent_death )
     }
     kill_console_processes( thread, 0 );
     abandon_mutexes( thread );
+    fast_abandon_mutexes( thread->id );
     if (violent_death)
     {
         send_thread_signal( thread, SIGQUIT );

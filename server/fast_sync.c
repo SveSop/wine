@@ -262,6 +262,33 @@ struct fast_sync *fast_create_semaphore( unsigned int count, unsigned int max )
     return fast_sync;
 }
 
+struct fast_sync *fast_create_mutex( thread_id_t owner, unsigned int count )
+{
+    struct winesync_mutex_args args = {0};
+    struct fast_sync_device *device;
+    struct fast_sync *fast_sync;
+
+    if (!(device = get_fast_sync_device())) return NULL;
+
+    args.owner = owner;
+    args.count = count;
+    if (ioctl( get_unix_fd( device->fd ), WINESYNC_IOC_CREATE_MUTEX, &args ) < 0)
+    {
+        file_set_error();
+        release_object( device );
+        return NULL;
+    }
+
+    if (!(fast_sync = alloc_object( &fast_sync_ops ))) return NULL;
+
+    /* transfer our device reference to the fast sync object */
+    fast_sync->device = device;
+    fast_sync->type = FAST_SYNC_MUTEX;
+    fast_sync->linux_obj = args.mutex;
+
+    return fast_sync;
+}
+
 void fast_set_event( struct fast_sync *fast_sync )
 {
     struct winesync_sem_args args = {0};
@@ -284,6 +311,20 @@ void fast_reset_event( struct fast_sync *fast_sync )
     ioctl( get_unix_fd( fast_sync->device->fd ), WINESYNC_IOC_GET_SEM, &fast_sync->linux_obj );
 }
 
+void fast_abandon_mutexes( thread_id_t tid )
+{
+    struct fast_sync_device *device;
+
+    if (!(device = get_fast_sync_device()))
+    {
+        clear_error();
+        return;
+    }
+
+    ioctl( get_unix_fd( device->fd ), WINESYNC_IOC_KILL_OWNER, &tid );
+    release_object( device );
+}
+
 #else
 
 struct fast_sync *fast_create_event( enum fast_sync_type type, int manual_reset, int signaled )
@@ -298,11 +339,21 @@ struct fast_sync *fast_create_semaphore( unsigned int count, unsigned int max )
     return NULL;
 }
 
+struct fast_sync *fast_create_mutex( thread_id_t owner, unsigned int count )
+{
+    set_error( STATUS_NOT_IMPLEMENTED );
+    return NULL;
+}
+
 void fast_set_event( struct fast_sync *fast_sync )
 {
 }
 
 void fast_reset_event( struct fast_sync *obj )
+{
+}
+
+void fast_abandon_mutexes( thread_id_t tid )
 {
 }
 
