@@ -157,6 +157,8 @@ extern NTSTATUS load_start_exe( WCHAR **image, void **module ) DECLSPEC_HIDDEN;
 extern void start_server( BOOL debug ) DECLSPEC_HIDDEN;
 extern ULONG_PTR get_image_address(void) DECLSPEC_HIDDEN;
 
+extern pthread_mutex_t fd_cache_mutex DECLSPEC_HIDDEN;
+
 extern void invoke_apc( CONTEXT *context, const user_apc_t *apc ) DECLSPEC_HIDDEN;
 extern unsigned int server_call_unlocked( void *req_ptr ) DECLSPEC_HIDDEN;
 extern void server_enter_uninterrupted_section( pthread_mutex_t *mutex, sigset_t *sigset ) DECLSPEC_HIDDEN;
@@ -267,6 +269,8 @@ extern void init_files(void) DECLSPEC_HIDDEN;
 extern void init_cpu_info(void) DECLSPEC_HIDDEN;
 
 extern void dbg_init(void) DECLSPEC_HIDDEN;
+
+extern void close_fast_sync_obj( HANDLE handle ) DECLSPEC_HIDDEN;
 
 extern void WINAPI DECLSPEC_NORETURN call_user_apc_dispatcher( CONTEXT *context_ptr, ULONG_PTR ctx,
                                                                ULONG_PTR arg1, ULONG_PTR arg2,
