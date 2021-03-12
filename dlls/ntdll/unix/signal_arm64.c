@@ -1013,8 +1013,6 @@ void signal_init_process(void)
     if (sigaction( SIGABRT, &sig_act, NULL ) == -1) goto error;
     sig_act.sa_sigaction = quit_handler;
     if (sigaction( SIGQUIT, &sig_act, NULL ) == -1) goto error;
-    sig_act.sa_sigaction = usr1_handler;
-    if (sigaction( SIGUSR1, &sig_act, NULL ) == -1) goto error;
     sig_act.sa_sigaction = usr2_handler;
     if (sigaction( SIGUSR2, &sig_act, NULL ) == -1) goto error;
     sig_act.sa_sigaction = trap_handler;
@@ -1025,6 +1023,9 @@ void signal_init_process(void)
     if (sigaction( SIGILL, &sig_act, NULL ) == -1) goto error;
     sig_act.sa_sigaction = bus_handler;
     if (sigaction( SIGBUS, &sig_act, NULL ) == -1) goto error;
+    sig_act.sa_sigaction = usr1_handler;
+    sig_act.sa_flags &= ~SA_RESTART; /* needed for fast sync alertable waits */
+    if (sigaction( SIGUSR1, &sig_act, NULL ) == -1) goto error;
     return;
 
  error:
