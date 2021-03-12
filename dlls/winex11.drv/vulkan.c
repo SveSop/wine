@@ -62,6 +62,7 @@ static XContext vulkan_swapchain_context;
 
 struct wine_vk_surface
 {
+    struct list entry;
     LONG ref;
     Window window;
     VkSurfaceKHR surface; /* native surface */
@@ -218,6 +219,10 @@ static void wine_vk_surface_release(struct wine_vk_surface *surface)
     if (InterlockedDecrement(&surface->ref))
         return;
 
+    EnterCriticalSection(&context_section);
+    list_remove(&surface->entry);
+    LeaveCriticalSection(&context_section);
+
     if (surface->window)
         XDestroyWindow(gdi_display, surface->window);
 
@@ -226,13 +231,27 @@ static void wine_vk_surface_release(struct wine_vk_surface *surface)
 
 void wine_vk_surface_destroy(HWND hwnd)
 {
-    struct wine_vk_surface *surface;
+    struct wine_vk_surface *surface, *next;
+    struct list *surface_list;
     EnterCriticalSection(&context_section);
-    if (!XFindContext(gdi_display, (XID)hwnd, vulkan_hwnd_context, (char **)&surface))
-    {
-        wine_vk_surface_release(surface);
-    }
+    if (!XFindContext(gdi_display, (XID)hwnd, vulkan_hwnd_context, (char **)&surface_list))
+        LIST_FOR_EACH_ENTRY_SAFE(surface, next, surface_list, struct wine_vk_surface, entry)
+            wine_vk_surface_release(surface);
     XDeleteContext(gdi_display, (XID)hwnd, vulkan_hwnd_context);
+    LeaveCriticalSection(&context_section);
+    heap_free(surface_list);
+}
+
+void resize_vk_surfaces(HWND hwnd, Window active, int mask, XWindowChanges *changes)
+{
+    struct wine_vk_surface *surface;
+    struct list *surface_list;
+    EnterCriticalSection(&context_section);
+    if (!XFindContext(gdi_display, (XID)hwnd, vulkan_hwnd_context, (char **)&surface_list))
+    {
+        LIST_FOR_EACH_ENTRY(surface, surface_list, struct wine_vk_surface, entry)
+            if (surface->window != active) XConfigureWindow(gdi_display, surface->window, mask, changes);
+    }
     LeaveCriticalSection(&context_section);
 }
 
@@ -295,7 +314,8 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
 {
     VkResult res;
     VkXlibSurfaceCreateInfoKHR create_info_host;
-    struct wine_vk_surface *x11_surface, *prev;
+    struct wine_vk_surface *x11_surface;
+    struct list *surface_list;
 
     TRACE("%p %p %p %p\n", instance, create_info, allocator, surface);
 
@@ -314,6 +334,7 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
     x11_surface->ref = 1;
+    list_init(&x11_surface->entry);
 
     x11_surface->window = create_client_window(create_info->hwnd, &default_visual);
     if (!x11_surface->window)
@@ -339,12 +360,22 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
     }
 
     EnterCriticalSection(&context_section);
-    if (!XFindContext(gdi_display, (XID)create_info->hwnd, vulkan_hwnd_context, (char **)&prev))
+    if (XFindContext(gdi_display, (XID)create_info->hwnd, vulkan_hwnd_context, (char **)&surface_list) &&
+        (surface_list = heap_alloc_zero(sizeof(*surface_list))))
     {
-        wine_vk_surface_release(prev);
+        list_init(surface_list);
+        XSaveContext(gdi_display, (XID)create_info->hwnd, vulkan_hwnd_context, (char *)surface_list);
     }
-    XSaveContext(gdi_display, (XID)create_info->hwnd, vulkan_hwnd_context, (char *)wine_vk_surface_grab(x11_surface));
+    if (!XFindContext(gdi_display, (XID)create_info->hwnd, vulkan_hwnd_context, (char **)&surface_list))
+        list_add_tail(surface_list, &x11_surface->entry);
     LeaveCriticalSection(&context_section);
+
+    if (!surface_list)
+    {
+        ERR("Failed to allocate surface list %p\n", create_info->hwnd);
+        res = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto err;
+    }
 
     *surface = (uintptr_t)x11_surface;
 
