@@ -127,6 +127,12 @@ static struct fast_sync_device *get_fast_sync_device(void)
     struct fast_sync_device *device;
     int unix_fd;
 
+    if (getenv( "WINE_DISABLE_FAST_SYNC" ) && atoi( getenv( "WINE_DISABLE_FAST_SYNC" ) ))
+    {
+        set_error( STATUS_NOT_IMPLEMENTED );
+        return NULL;
+    }
+
     if (fast_sync_device_object)
         return (struct fast_sync_device *)grab_object( fast_sync_device_object );
 
