@@ -3780,6 +3780,7 @@ static void load_global_options(void)
 {
     OBJECT_ATTRIBUTES attr;
     UNICODE_STRING name_str, val_str;
+    WCHAR *env_str;
     HANDLE hkey;
     ULONG value;
 
@@ -3821,6 +3822,16 @@ static void load_global_options(void)
     LdrQueryImageFileExecutionOptions( &NtCurrentTeb()->Peb->ProcessParameters->ImagePathName,
                                        L"GlobalFlag", REG_DWORD, &NtCurrentTeb()->Peb->NtGlobalFlag,
                                        sizeof(DWORD), NULL );
+
+    if ((env_str = get_env(L"WINE_HEAP_DELAY_FREE")))
+    {
+        if (*env_str == L'1')
+        {
+            ERR("Enabling heap free delay hack.\n");
+            delay_heap_free = TRUE;
+        }
+        RtlFreeHeap( GetProcessHeap(), 0, env_str );
+    }
     heap_set_debug_flags( GetProcessHeap() );
 }
 
