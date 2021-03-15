@@ -178,6 +178,8 @@ C_ASSERT( HEAP_NB_FREE_LISTS % HEAP_FREEMASK_BLOCK == 0 );
 #define COMMIT_MASK          0xffff  /* bitmask for commit/decommit granularity */
 #define MAX_FREE_PENDING     1024    /* max number of free requests to delay */
 
+BOOL delay_heap_free = FALSE;
+
 static HEAP *processHeap;  /* main process heap */
 
 static BOOL HEAP_IsRealArena( HEAP *heapPtr, DWORD flags, LPCVOID block, BOOL quiet );
@@ -1618,8 +1620,8 @@ void heap_set_debug_flags( HANDLE handle )
                              large->block_size - sizeof(*large) - large->data_size, flags );
     }
 
-    if ((heap->flags & HEAP_GROWABLE) && !heap->pending_free &&
-        ((flags & HEAP_FREE_CHECKING_ENABLED) || RUNNING_ON_VALGRIND))
+    if (delay_heap_free || ((heap->flags & HEAP_GROWABLE) && !heap->pending_free &&
+        ((flags & HEAP_FREE_CHECKING_ENABLED) || RUNNING_ON_VALGRIND)))
     {
         heap->pending_free = RtlAllocateHeap( GetProcessHeap(), HEAP_ZERO_MEMORY,
                                               MAX_FREE_PENDING * sizeof(*heap->pending_free) );
