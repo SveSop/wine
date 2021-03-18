@@ -3080,6 +3080,8 @@ struct create_window_reply
     client_ptr_t   class_ptr;
     int            dpi;
     int            awareness;
+    int            needs_cloak;
+    char __pad_44[4];
 };
 
 
@@ -3122,6 +3124,8 @@ struct set_window_owner_reply
     struct reply_header __header;
     user_handle_t  full_owner;
     user_handle_t  prev_owner;
+    int            needs_cloak;
+    char __pad_20[4];
 };
 
 
@@ -3179,6 +3183,39 @@ struct set_window_info_reply
 #define SET_WIN_USERDATA  0x10
 #define SET_WIN_EXTRA     0x20
 #define SET_WIN_UNICODE   0x40
+
+
+
+struct get_window_cloaked_request
+{
+    struct request_header __header;
+    user_handle_t  handle;
+};
+struct get_window_cloaked_reply
+{
+    struct reply_header __header;
+    unsigned int   cloaked;
+    char __pad_12[4];
+};
+
+
+
+struct set_window_cloaked_request
+{
+    struct request_header __header;
+    user_handle_t  handle;
+    unsigned int   cloaked;
+    char __pad_20[4];
+};
+struct set_window_cloaked_reply
+{
+    struct reply_header __header;
+    unsigned int   count;
+    /* VARARG(windows,user_handles); */
+    char __pad_12[4];
+};
+#define SET_WINDOW_CLOAKED_ON     0x01
+#define SET_WINDOW_CLOAKED_SHELL  0x02
 
 
 
@@ -5751,6 +5788,8 @@ enum request
     REQ_set_window_owner,
     REQ_get_window_info,
     REQ_set_window_info,
+    REQ_get_window_cloaked,
+    REQ_set_window_cloaked,
     REQ_set_parent,
     REQ_get_window_parents,
     REQ_get_window_children,
@@ -6043,6 +6082,8 @@ union generic_request
     struct set_window_owner_request set_window_owner_request;
     struct get_window_info_request get_window_info_request;
     struct set_window_info_request set_window_info_request;
+    struct get_window_cloaked_request get_window_cloaked_request;
+    struct set_window_cloaked_request set_window_cloaked_request;
     struct set_parent_request set_parent_request;
     struct get_window_parents_request get_window_parents_request;
     struct get_window_children_request get_window_children_request;
@@ -6333,6 +6374,8 @@ union generic_reply
     struct set_window_owner_reply set_window_owner_reply;
     struct get_window_info_reply get_window_info_reply;
     struct set_window_info_reply set_window_info_reply;
+    struct get_window_cloaked_reply get_window_cloaked_reply;
+    struct set_window_cloaked_reply set_window_cloaked_reply;
     struct set_parent_reply set_parent_reply;
     struct get_window_parents_reply get_window_parents_reply;
     struct get_window_children_reply get_window_children_reply;
@@ -6485,7 +6528,7 @@ union generic_reply
 
 /* ### protocol_version begin ### */
 
-#define SERVER_PROTOCOL_VERSION 690
+#define SERVER_PROTOCOL_VERSION 691
 
 /* ### protocol_version end ### */
 
