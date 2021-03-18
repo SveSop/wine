@@ -8920,27 +8920,33 @@ static const IMFDXGIDeviceManagerVtbl dxgi_device_manager_vtbl =
 HRESULT WINAPI MFCreateDXGIDeviceManager(UINT *token, IMFDXGIDeviceManager **manager)
 {
     struct dxgi_device_manager *object;
+    const char *sgi = getenv("SteamGameId");
 
     TRACE("%p, %p.\n", token, manager);
 
-    if (!token || !manager)
-        return E_POINTER;
+    if (sgi && (!strcmp(sgi,"1113560")))
+    {
+        if (!token || !manager)
+            return E_POINTER;
 
-    if (!(object = heap_alloc_zero(sizeof(*object))))
-        return E_OUTOFMEMORY;
+        if (!(object = heap_alloc_zero(sizeof(*object))))
+            return E_OUTOFMEMORY;
 
-    object->IMFDXGIDeviceManager_iface.lpVtbl = &dxgi_device_manager_vtbl;
-    object->refcount = 1;
-    object->token = GetTickCount();
-    InitializeCriticalSection(&object->cs);
-    InitializeConditionVariable(&object->lock);
+        object->IMFDXGIDeviceManager_iface.lpVtbl = &dxgi_device_manager_vtbl;
+        object->refcount = 1;
+        object->token = GetTickCount();
+        InitializeCriticalSection(&object->cs);
+        InitializeConditionVariable(&object->lock);
 
-    TRACE("Created device manager: %p, token: %u.\n", object, object->token);
+        TRACE("Created device manager: %p, token: %u.\n", object, object->token);
 
-    *token = object->token;
-    *manager = &object->IMFDXGIDeviceManager_iface;
+        *token = object->token;
+        *manager = &object->IMFDXGIDeviceManager_iface;
 
-    return S_OK;
+        return S_OK;
+    } else {
+        return E_NOTIMPL;
+    }
 }
 
 /***********************************************************************
