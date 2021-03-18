@@ -4578,6 +4578,43 @@ static void dump_get_next_thread_reply( const struct get_next_thread_reply *req 
     fprintf( stderr, " handle=%04x", req->handle );
 }
 
+static void dump_get_fast_sync_device_request( const struct get_fast_sync_device_request *req )
+{
+}
+
+static void dump_get_fast_sync_device_reply( const struct get_fast_sync_device_reply *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+}
+
+static void dump_get_fast_sync_obj_request( const struct get_fast_sync_obj_request *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+}
+
+static void dump_get_fast_sync_obj_reply( const struct get_fast_sync_obj_reply *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+    fprintf( stderr, ", obj=%d", req->obj );
+    fprintf( stderr, ", type=%d", req->type );
+    fprintf( stderr, ", access=%08x", req->access );
+}
+
+static void dump_fast_select_queue_request( const struct fast_select_queue_request *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+}
+
+static void dump_fast_unselect_queue_request( const struct fast_unselect_queue_request *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+    fprintf( stderr, ", signaled=%d", req->signaled );
+}
+
+static void dump_check_user_apc_request( const struct check_user_apc_request *req )
+{
+}
+
 static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_new_process_request,
     (dump_func)dump_get_new_process_info_request,
@@ -4857,6 +4894,11 @@ static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_suspend_process_request,
     (dump_func)dump_resume_process_request,
     (dump_func)dump_get_next_thread_request,
+    (dump_func)dump_get_fast_sync_device_request,
+    (dump_func)dump_get_fast_sync_obj_request,
+    (dump_func)dump_fast_select_queue_request,
+    (dump_func)dump_fast_unselect_queue_request,
+    (dump_func)dump_check_user_apc_request,
 };
 
 static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
@@ -5138,6 +5180,11 @@ static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
     NULL,
     NULL,
     (dump_func)dump_get_next_thread_reply,
+    (dump_func)dump_get_fast_sync_device_reply,
+    (dump_func)dump_get_fast_sync_obj_reply,
+    NULL,
+    NULL,
+    NULL,
 };
 
 static const char * const req_names[REQ_NB_REQUESTS] = {
@@ -5419,6 +5466,11 @@ static const char * const req_names[REQ_NB_REQUESTS] = {
     "suspend_process",
     "resume_process",
     "get_next_thread",
+    "get_fast_sync_device",
+    "get_fast_sync_obj",
+    "fast_select_queue",
+    "fast_unselect_queue",
+    "check_user_apc",
 };
 
 static const struct

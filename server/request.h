@@ -397,6 +397,11 @@ DECL_HANDLER(terminate_job);
 DECL_HANDLER(suspend_process);
 DECL_HANDLER(resume_process);
 DECL_HANDLER(get_next_thread);
+DECL_HANDLER(get_fast_sync_device);
+DECL_HANDLER(get_fast_sync_obj);
+DECL_HANDLER(fast_select_queue);
+DECL_HANDLER(fast_unselect_queue);
+DECL_HANDLER(check_user_apc);
 
 #ifdef WANT_REQUEST_HANDLERS
 
@@ -681,6 +686,11 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_suspend_process,
     (req_handler)req_resume_process,
     (req_handler)req_get_next_thread,
+    (req_handler)req_get_fast_sync_device,
+    (req_handler)req_get_fast_sync_obj,
+    (req_handler)req_fast_select_queue,
+    (req_handler)req_fast_unselect_queue,
+    (req_handler)req_check_user_apc,
 };
 
 C_ASSERT( sizeof(abstime_t) == 8 );
@@ -2269,6 +2279,22 @@ C_ASSERT( FIELD_OFFSET(struct get_next_thread_request, flags) == 28 );
 C_ASSERT( sizeof(struct get_next_thread_request) == 32 );
 C_ASSERT( FIELD_OFFSET(struct get_next_thread_reply, handle) == 8 );
 C_ASSERT( sizeof(struct get_next_thread_reply) == 16 );
+C_ASSERT( sizeof(struct get_fast_sync_device_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_device_reply, handle) == 8 );
+C_ASSERT( sizeof(struct get_fast_sync_device_reply) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_obj_request, handle) == 12 );
+C_ASSERT( sizeof(struct get_fast_sync_obj_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_obj_reply, handle) == 8 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_obj_reply, obj) == 12 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_obj_reply, type) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_fast_sync_obj_reply, access) == 20 );
+C_ASSERT( sizeof(struct get_fast_sync_obj_reply) == 24 );
+C_ASSERT( FIELD_OFFSET(struct fast_select_queue_request, handle) == 12 );
+C_ASSERT( sizeof(struct fast_select_queue_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct fast_unselect_queue_request, handle) == 12 );
+C_ASSERT( FIELD_OFFSET(struct fast_unselect_queue_request, signaled) == 16 );
+C_ASSERT( sizeof(struct fast_unselect_queue_request) == 24 );
+C_ASSERT( sizeof(struct check_user_apc_request) == 16 );
 
 #endif  /* WANT_REQUEST_HANDLERS */
 
