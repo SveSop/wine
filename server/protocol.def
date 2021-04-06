@@ -3811,3 +3811,8 @@ enum fast_sync_type
     obj_handle_t handle;          /* handle to the queue */
     int          signaled;        /* was the queue signaled? */
 @END
+
+
+/* Check if there are any user APCs queued */
+@REQ(check_user_apc)
+@END
