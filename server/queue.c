@@ -3629,3 +3629,8 @@ DECL_HANDLER(fast_unselect_queue)
 
     release_object( queue );
 }
+
+DECL_HANDLER(check_user_apc)
+{
+    if (list_empty( &current->user_apc )) set_error( STATUS_TIMEOUT );
+}
