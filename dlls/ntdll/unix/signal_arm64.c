@@ -920,6 +920,8 @@ static void usr1_handler( int signal, siginfo_t *siginfo, void *sigcontext )
     save_context( &context, sigcontext );
     wait_suspend( &context );
     restore_context( &context, sigcontext );
+
+    // FIXME: fast alertable waits...
 }
 
 

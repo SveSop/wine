@@ -384,7 +384,7 @@ static int wait_select_reply( void *cookie )
 /***********************************************************************
  *              invoke_user_apc
  */
-static void invoke_user_apc( CONTEXT *context, const user_apc_t *apc, NTSTATUS status )
+void invoke_user_apc( CONTEXT *context, const user_apc_t *apc, NTSTATUS status )
 {
     call_user_apc_dispatcher( context, apc->args[0], apc->args[1], apc->args[2],
                               wine_server_get_ptr( apc->func ), pKiUserApcDispatcher, status );

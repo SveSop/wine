@@ -2093,6 +2093,9 @@ static void usr1_handler( int signal, siginfo_t *siginfo, void *sigcontext )
         NtGetContextThread( GetCurrentThread(), &xcontext.c );
         wait_suspend( &xcontext.c );
         NtSetContextThread( GetCurrentThread(), &xcontext.c );
+
+        if (ntdll_get_thread_data()->in_fast_alert_wait)
+            siglongjmp( ntdll_get_thread_data()->fast_alert_buf, 1 );
     }
     else
     {
