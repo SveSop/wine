@@ -22,6 +22,7 @@
 #define __NTDLL_UNIX_PRIVATE_H
 
 #include <pthread.h>
+#include <setjmp.h>
 #include <signal.h>
 #include "unixlib.h"
 #include "wine/server.h"
@@ -67,6 +68,8 @@ struct ntdll_thread_data
     struct list        entry;         /* entry in TEB list */
     PRTL_THREAD_START_ROUTINE start;  /* thread entry point */
     void              *param;         /* thread entry point parameter */
+    volatile int       in_fast_alert_wait; /* are we currently in a fast alertable wait? */
+    sigjmp_buf         fast_alert_buf; /* jump buffer to restart a fast alertable wait */
 };
 
 C_ASSERT( sizeof(struct ntdll_thread_data) <= sizeof(((TEB *)0)->GdiTebBatch) );
@@ -154,6 +157,7 @@ extern NTSTATUS load_start_exe( WCHAR **image, void **module ) DECLSPEC_HIDDEN;
 extern void start_server( BOOL debug ) DECLSPEC_HIDDEN;
 extern ULONG_PTR get_image_address(void) DECLSPEC_HIDDEN;
 
+extern void invoke_apc( CONTEXT *context, const user_apc_t *apc ) DECLSPEC_HIDDEN;
 extern unsigned int server_call_unlocked( void *req_ptr ) DECLSPEC_HIDDEN;
 extern void server_enter_uninterrupted_section( pthread_mutex_t *mutex, sigset_t *sigset ) DECLSPEC_HIDDEN;
 extern void server_leave_uninterrupted_section( pthread_mutex_t *mutex, sigset_t *sigset ) DECLSPEC_HIDDEN;

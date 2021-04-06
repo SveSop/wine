@@ -379,7 +379,7 @@ static int wait_select_reply( void *cookie )
 }
 
 
-static void invoke_apc( CONTEXT *context, const user_apc_t *apc )
+void invoke_apc( CONTEXT *context, const user_apc_t *apc )
 {
     switch( apc->type )
     {
