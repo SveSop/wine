@@ -161,9 +161,9 @@ typedef struct tagHEAP
     ARENA_INUSE    **pending_free;  /* Ring buffer for pending free requests */
     RTL_CRITICAL_SECTION critSection; /* Critical section for serialization */
     struct list     *freeList;      /* Free lists */
-    int              extended_type; /* Extended heap type */
     struct wine_rb_tree freeTree;   /* Free tree */
     DWORD            freeMask[HEAP_NB_FREE_LISTS / (8 * sizeof(DWORD))];
+    int              extended_type; /* Extended heap type */
 } HEAP;
 
 #define HEAP_FREEMASK_BLOCK    (8 * sizeof(DWORD))
@@ -1806,7 +1806,7 @@ NTSTATUS HEAP_std_allocate( HANDLE heap, ULONG flags, SIZE_T size, void **out )
     SUBHEAP *subheap;
     SIZE_T rounded_size;
 
-    rounded_size = ROUND_SIZE(size) + HEAP_TAIL_EXTRA_SIZE( flags );
+    rounded_size = ROUND_SIZE(size) + HEAP_TAIL_EXTRA_SIZE;
     if (rounded_size < size) return STATUS_NO_MEMORY; /* overflow */
     if (rounded_size < HEAP_MIN_DATA_SIZE) rounded_size = HEAP_MIN_DATA_SIZE;
 
@@ -1980,7 +1980,7 @@ NTSTATUS HEAP_std_reallocate( HANDLE heap, ULONG flags, void *ptr, SIZE_T size, 
     SIZE_T oldBlockSize, oldActualSize, rounded_size;
 
     rounded_size = ROUND_SIZE(size) + HEAP_TAIL_EXTRA_SIZE;
-    if (rounded_size < size) return STATUS_NO_MEMORY;  /* overflow */
+    if (rounded_size < size) return STATUS_NO_MEMORY; /* overflow */
     if (rounded_size < HEAP_MIN_DATA_SIZE) rounded_size = HEAP_MIN_DATA_SIZE;
 
     pArena = (ARENA_INUSE *)ptr - 1;
