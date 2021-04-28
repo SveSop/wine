@@ -4028,11 +4028,11 @@ void WINAPI LdrInitializeThunk( CONTEXT *context, ULONG_PTR unknown2, ULONG_PTR 
     InitializeObjectAttributes( &staging_event_attr, &staging_event_string, OBJ_OPENIF, NULL, NULL );
     if (NtCreateEvent( &staging_event, EVENT_ALL_ACCESS, &staging_event_attr, NotificationEvent, FALSE ) == STATUS_SUCCESS)
     {
-        FIXME_(winediag)("wine-staging %s is a testing version containing experimental patches.\n", wine_get_version());
-        FIXME_(winediag)("Please mention your exact version when filing bug reports on winehq.org.\n");
+        FIXME_(winediag)("cybwine %s is a testing version containing HIGHLY experimental patches.\n", wine_get_version());
+        FIXME_(winediag)("Please do NOT report any errors with this version.\n");
     }
     else
-        WARN_(winediag)("wine-staging %s is a testing version containing experimental patches.\n", wine_get_version());
+        WARN_(winediag)("cybwine %s is a testing version containing HIGHLY experimental patches.\n", wine_get_version());
 
 
     RtlAcquirePebLock();
