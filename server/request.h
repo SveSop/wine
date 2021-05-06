@@ -256,6 +256,8 @@ DECL_HANDLER(get_desktop_window);
 DECL_HANDLER(set_window_owner);
 DECL_HANDLER(get_window_info);
 DECL_HANDLER(set_window_info);
+DECL_HANDLER(get_window_cloaked);
+DECL_HANDLER(set_window_cloaked);
 DECL_HANDLER(set_parent);
 DECL_HANDLER(get_window_parents);
 DECL_HANDLER(get_window_children);
@@ -543,6 +545,8 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_set_window_owner,
     (req_handler)req_get_window_info,
     (req_handler)req_set_window_info,
+    (req_handler)req_get_window_cloaked,
+    (req_handler)req_set_window_cloaked,
     (req_handler)req_set_parent,
     (req_handler)req_get_window_parents,
     (req_handler)req_get_window_children,
@@ -1468,7 +1472,8 @@ C_ASSERT( FIELD_OFFSET(struct create_window_reply, extra) == 20 );
 C_ASSERT( FIELD_OFFSET(struct create_window_reply, class_ptr) == 24 );
 C_ASSERT( FIELD_OFFSET(struct create_window_reply, dpi) == 32 );
 C_ASSERT( FIELD_OFFSET(struct create_window_reply, awareness) == 36 );
-C_ASSERT( sizeof(struct create_window_reply) == 40 );
+C_ASSERT( FIELD_OFFSET(struct create_window_reply, needs_cloak) == 40 );
+C_ASSERT( sizeof(struct create_window_reply) == 48 );
 C_ASSERT( FIELD_OFFSET(struct destroy_window_request, handle) == 12 );
 C_ASSERT( sizeof(struct destroy_window_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_desktop_window_request, force) == 12 );
@@ -1481,7 +1486,8 @@ C_ASSERT( FIELD_OFFSET(struct set_window_owner_request, owner) == 16 );
 C_ASSERT( sizeof(struct set_window_owner_request) == 24 );
 C_ASSERT( FIELD_OFFSET(struct set_window_owner_reply, full_owner) == 8 );
 C_ASSERT( FIELD_OFFSET(struct set_window_owner_reply, prev_owner) == 12 );
-C_ASSERT( sizeof(struct set_window_owner_reply) == 16 );
+C_ASSERT( FIELD_OFFSET(struct set_window_owner_reply, needs_cloak) == 16 );
+C_ASSERT( sizeof(struct set_window_owner_reply) == 24 );
 C_ASSERT( FIELD_OFFSET(struct get_window_info_request, handle) == 12 );
 C_ASSERT( sizeof(struct get_window_info_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_window_info_reply, full_handle) == 8 );
@@ -1512,6 +1518,15 @@ C_ASSERT( FIELD_OFFSET(struct set_window_info_reply, old_user_data) == 24 );
 C_ASSERT( FIELD_OFFSET(struct set_window_info_reply, old_extra_value) == 32 );
 C_ASSERT( FIELD_OFFSET(struct set_window_info_reply, old_id) == 40 );
 C_ASSERT( sizeof(struct set_window_info_reply) == 48 );
+C_ASSERT( FIELD_OFFSET(struct get_window_cloaked_request, handle) == 12 );
+C_ASSERT( sizeof(struct get_window_cloaked_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_window_cloaked_reply, cloaked) == 8 );
+C_ASSERT( sizeof(struct get_window_cloaked_reply) == 16 );
+C_ASSERT( FIELD_OFFSET(struct set_window_cloaked_request, handle) == 12 );
+C_ASSERT( FIELD_OFFSET(struct set_window_cloaked_request, cloaked) == 16 );
+C_ASSERT( sizeof(struct set_window_cloaked_request) == 24 );
+C_ASSERT( FIELD_OFFSET(struct set_window_cloaked_reply, count) == 8 );
+C_ASSERT( sizeof(struct set_window_cloaked_reply) == 16 );
 C_ASSERT( FIELD_OFFSET(struct set_parent_request, handle) == 12 );
 C_ASSERT( FIELD_OFFSET(struct set_parent_request, parent) == 16 );
 C_ASSERT( sizeof(struct set_parent_request) == 24 );
