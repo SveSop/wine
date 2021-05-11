@@ -605,6 +605,19 @@ static BOOL X11DRV_InitGpu(HDEVINFO devinfo, const struct x11drv_gpu *gpu, INT g
     if (!link_device(instanceW, &GUID_DEVINTERFACE_DISPLAY_ADAPTER))
         goto done;
 
+    {
+        const char *steamgameid = getenv("SteamGameId");
+        if (steamgameid && (!strcmp(steamgameid, "1196590") || !strcmp(steamgameid, "1541780"))) {
+            /* DOOM Eternal absolutely hates this (causes hang before menu), so let's do it only for RE Village + demo for now */
+            /* Register GUID_DISPLAY_DEVICE_ARRIVAL */
+            if (!SetupDiCreateDeviceInterfaceW(devinfo, &device_data, &GUID_DISPLAY_DEVICE_ARRIVAL, NULL, 0, &iface_data))
+                goto done;
+
+            if (!link_device(instanceW, &GUID_DISPLAY_DEVICE_ARRIVAL))
+                goto done;
+        }
+    }
+
     /* Write HardwareID registry property, REG_MULTI_SZ */
     written = sprintfW(bufferW, gpu_hardware_id_fmtW, gpu->vendor_id, gpu->device_id);
     bufferW[written + 1] = 0;
