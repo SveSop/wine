@@ -75,7 +75,8 @@ AddReg=\
     Tapi,\
     Timezones,\
     VersionInfo,\
-    LicenseInformation
+    LicenseInformation,\
+    NVIDIANGX
 
 [DefaultInstall.ntamd64]
 RegisterDlls=RegisterDllsSection
@@ -103,7 +104,8 @@ AddReg=\
     Tapi,\
     Timezones,\
     VersionInfo.ntamd64,\
-    LicenseInformation
+    LicenseInformation,\
+    NVIDIANGX
 
 [DefaultInstall.ntarm64]
 RegisterDlls=RegisterDllsSection
@@ -146,7 +148,8 @@ AddReg=\
     Misc,\
     Tapi,\
     VersionInfo.ntamd64,\
-    LicenseInformation
+    LicenseInformation,\
+    NVIDIANGX
 
 [Wow64Install.ntarm64]
 WineFakeDlls=FakeDllsWin32
@@ -4331,6 +4334,9 @@ services,"@%11%\ws2_32.dll,-4"
 winebus.inf,"@%12%\winebus.sys,-1"
 winehid.inf,"@%12%\winehid.sys,-1"
 wineusb.inf,"@%12%\wineusb.sys,-1"
+
+[NVIDIANGX]
+HKLM,Software\NVIDIA Corporation\Global\NGXCore,"FullPath",,"C:\Windows\System32"
 
 [NlsFiles]
 c_037.nls
