@@ -867,6 +867,9 @@ static VkBool32 X11DRV_query_fs_hack(VkSurfaceKHR surface, VkExtent2D *real_sz, 
             dst_blit->extent.height = scaled.cy;
         }
 
+        if (filter)
+            *filter = fs_hack_is_integer() ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+
         return VK_TRUE;
     }
     else if (fs_hack_enabled(monitor))
@@ -875,9 +878,6 @@ static VkBool32 X11DRV_query_fs_hack(VkSurfaceKHR surface, VkExtent2D *real_sz, 
         RECT client_rect;
 
         GetClientRect( hwnd, &client_rect );
-
-        if (filter)
-            *filter = fs_hack_is_integer() ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
 
         if (real_sz)
         {
