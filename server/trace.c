@@ -395,6 +395,46 @@ static void dump_irp_params( const char *prefix, const irp_params_t *data )
     }
 }
 
+static void dump_varargs_bytes( const char *prefix, data_size_t size )
+{
+    const unsigned char *data = cur_data;
+    data_size_t len = min( 1024, size );
+
+    fprintf( stderr, "%s{", prefix );
+    while (len > 0)
+    {
+        fprintf( stderr, "%02x", *data++ );
+        if (--len) fputc( ',', stderr );
+    }
+    if (size > 1024) fprintf( stderr, "...(total %u)", size );
+    fputc( '}', stderr );
+    remove_data( size );
+}
+
+static void dump_rawinput( const char *prefix, const union rawinput *rawinput )
+{
+    switch (rawinput->type)
+    {
+    case RIM_TYPEMOUSE:
+        fprintf( stderr, "%s{type=MOUSE,x=%d,y=%d,data=%08x}", prefix, rawinput->mouse.x,
+                 rawinput->mouse.y, rawinput->mouse.data );
+        break;
+    case RIM_TYPEKEYBOARD:
+        fprintf( stderr, "%s{type=KEYBOARD,message=%04x,vkey=%04hx,scan=%04hx}", prefix,
+                 rawinput->kbd.message, rawinput->kbd.vkey, rawinput->kbd.scan );
+        break;
+    case RIM_TYPEHID:
+        fprintf( stderr, "%s{type=HID,device=%04x,param=%04x,length=%u", prefix,
+                 rawinput->hid.device, rawinput->hid.param, rawinput->hid.length );
+        dump_varargs_bytes( ",report=", rawinput->hid.length );
+        fputc( '}', stderr );
+        break;
+    default:
+        fprintf( stderr, "%s{type=%04x}", prefix, rawinput->type );
+        break;
+    }
+}
+
 static void dump_hw_input( const char *prefix, const hw_input_t *input )
 {
     switch (input->type)
@@ -415,6 +455,12 @@ static void dump_hw_input( const char *prefix, const hw_input_t *input )
     case INPUT_HARDWARE:
         fprintf( stderr, "%s{type=HARDWARE,msg=%04x", prefix, input->hw.msg );
         dump_uint64( ",lparam=", &input->hw.lparam );
+        switch (input->hw.msg)
+        {
+        case WM_INPUT:
+        case WM_INPUT_DEVICE_CHANGE:
+            dump_rawinput( ",rawinput=", &input->hw.data.rawinput );
+        }
         fputc( '}', stderr );
         break;
     default:
@@ -554,22 +600,6 @@ static void dump_varargs_user_handles( const char *prefix, data_size_t size )
         fprintf( stderr, "%08x", *data++ );
         if (--len) fputc( ',', stderr );
     }
-    fputc( '}', stderr );
-    remove_data( size );
-}
-
-static void dump_varargs_bytes( const char *prefix, data_size_t size )
-{
-    const unsigned char *data = cur_data;
-    data_size_t len = min( 1024, size );
-
-    fprintf( stderr,"%s{", prefix );
-    while (len > 0)
-    {
-        fprintf( stderr, "%02x", *data++ );
-        if (--len) fputc( ',', stderr );
-    }
-    if (size > 1024) fprintf( stderr, "...(total %u)", size );
     fputc( '}', stderr );
     remove_data( size );
 }
@@ -1926,6 +1956,7 @@ static void dump_alloc_file_handle_reply( const struct alloc_file_handle_reply *
 static void dump_get_handle_unix_name_request( const struct get_handle_unix_name_request *req )
 {
     fprintf( stderr, " handle=%04x", req->handle );
+    fprintf( stderr, ", nofollow=%d", req->nofollow );
 }
 
 static void dump_get_handle_unix_name_reply( const struct get_handle_unix_name_reply *req )
@@ -2048,6 +2079,7 @@ static void dump_get_socket_info_reply( const struct get_socket_info_reply *req 
     fprintf( stderr, " family=%d", req->family );
     fprintf( stderr, ", type=%d", req->type );
     fprintf( stderr, ", protocol=%d", req->protocol );
+    dump_timeout( ", connect_time=", &req->connect_time );
 }
 
 static void dump_enable_socket_event_request( const struct enable_socket_event_request *req )
@@ -3105,6 +3137,12 @@ static void dump_set_window_region_request( const struct set_window_region_reque
 {
     fprintf( stderr, " window=%08x", req->window );
     fprintf( stderr, ", redraw=%d", req->redraw );
+    dump_varargs_rectangles( ", region=", cur_size );
+}
+
+static void dump_set_layer_region_request( const struct set_layer_region_request *req )
+{
+    fprintf( stderr, " window=%08x", req->window );
     dump_varargs_rectangles( ", region=", cur_size );
 }
 
@@ -4267,6 +4305,12 @@ static void dump_set_fd_name_info_request( const struct set_fd_name_info_request
     dump_varargs_string( ", filename=", cur_size );
 }
 
+static void dump_set_fd_eof_info_request( const struct set_fd_eof_info_request *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+    dump_uint64( ", eof=", &req->eof );
+}
+
 static void dump_get_window_layered_info_request( const struct get_window_layered_info_request *req )
 {
     fprintf( stderr, " handle=%08x", req->handle );
@@ -4603,6 +4647,7 @@ static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_get_surface_region_request,
     (dump_func)dump_get_window_region_request,
     (dump_func)dump_set_window_region_request,
+    (dump_func)dump_set_layer_region_request,
     (dump_func)dump_get_update_region_request,
     (dump_func)dump_update_window_zorder_request,
     (dump_func)dump_redraw_window_request,
@@ -4706,6 +4751,7 @@ static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_set_fd_completion_mode_request,
     (dump_func)dump_set_fd_disp_info_request,
     (dump_func)dump_set_fd_name_info_request,
+    (dump_func)dump_set_fd_eof_info_request,
     (dump_func)dump_get_window_layered_info_request,
     (dump_func)dump_set_window_layered_info_request,
     (dump_func)dump_alloc_user_handle_request,
@@ -4880,6 +4926,7 @@ static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_get_surface_region_reply,
     (dump_func)dump_get_window_region_reply,
     NULL,
+    NULL,
     (dump_func)dump_get_update_region_reply,
     NULL,
     NULL,
@@ -4978,6 +5025,7 @@ static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
     NULL,
     (dump_func)dump_remove_completion_reply,
     (dump_func)dump_query_completion_reply,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -5157,6 +5205,7 @@ static const char * const req_names[REQ_NB_REQUESTS] = {
     "get_surface_region",
     "get_window_region",
     "set_window_region",
+    "set_layer_region",
     "get_update_region",
     "update_window_zorder",
     "redraw_window",
@@ -5260,6 +5309,7 @@ static const char * const req_names[REQ_NB_REQUESTS] = {
     "set_fd_completion_mode",
     "set_fd_disp_info",
     "set_fd_name_info",
+    "set_fd_eof_info",
     "get_window_layered_info",
     "set_window_layered_info",
     "alloc_user_handle",
