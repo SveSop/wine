@@ -1400,6 +1400,19 @@ void WINAPI wine_vkGetPhysicalDeviceExternalSemaphorePropertiesKHR(VkPhysicalDev
     properties->externalSemaphoreFeatures = 0;
 }
 
+VkResult WINAPI wine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR *create_info,
+        const VkAllocationCallbacks *allocator, VkSwapchainKHR *swapchain)
+{
+    VkSwapchainCreateInfoKHR native_info;
+
+    TRACE("%p, %p, %p, %p\n", device, create_info, allocator, swapchain);
+
+    native_info = *create_info;
+    native_info.surface = wine_surface_from_handle(create_info->surface)->driver_surface;
+
+    return thunk_vkCreateSwapchainKHR(device, &create_info, allocator, swapchain);
+}
+
 VkResult WINAPI wine_vkCreateWin32SurfaceKHR(VkInstance instance,
         const VkWin32SurfaceCreateInfoKHR *createInfo, const VkAllocationCallbacks *allocator, VkSurfaceKHR *surface)
 {
