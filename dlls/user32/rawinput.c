@@ -187,33 +187,7 @@ static void find_devices(void)
     }
     rawinput_devices_count = 0;
 
-    set = SetupDiGetClassDevsW(&hid_guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
-
-    for (idx = 0; SetupDiEnumDeviceInterfaces(set, NULL, &hid_guid, idx, &iface); ++idx)
-    {
-        if (!(device = add_device(set, &iface)))
-            continue;
-
-        attr.Size = sizeof(HIDD_ATTRIBUTES);
-        if (!HidD_GetAttributes(device->file, &attr))
-            WARN("Failed to get attributes.\n");
-
-        device->info.dwType = RIM_TYPEHID;
-        device->info.u.hid.dwVendorId = attr.VendorID;
-        device->info.u.hid.dwProductId = attr.ProductID;
-        device->info.u.hid.dwVersionNumber = attr.VersionNumber;
-
-        if (!HidD_GetPreparsedData(device->file, &device->data))
-            WARN("Failed to get preparsed data.\n");
-
-        if (!HidP_GetCaps(device->data, &caps))
-            WARN("Failed to get caps.\n");
-
-        device->info.u.hid.usUsagePage = caps.UsagePage;
-        device->info.u.hid.usUsage = caps.Usage;
-    }
-
-    SetupDiDestroyDeviceInfoList(set);
+    /* add mice and keyboards first so we won't add the duplicated HID devices */
 
     set = SetupDiGetClassDevsW(&GUID_DEVINTERFACE_MOUSE, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
 
@@ -245,6 +219,34 @@ static void find_devices(void)
         device->info.u.keyboard = keyboard_info;
         HidD_FreePreparsedData(device->data);
         device->data = NULL;
+    }
+
+    SetupDiDestroyDeviceInfoList(set);
+
+    set = SetupDiGetClassDevsW(&hid_guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+
+    for (idx = 0; SetupDiEnumDeviceInterfaces(set, NULL, &hid_guid, idx, &iface); ++idx)
+    {
+        if (!(device = add_device(set, &iface)))
+            continue;
+
+        attr.Size = sizeof(HIDD_ATTRIBUTES);
+        if (!HidD_GetAttributes(device->file, &attr))
+            WARN("Failed to get attributes.\n");
+
+        device->info.dwType = RIM_TYPEHID;
+        device->info.u.hid.dwVendorId = attr.VendorID;
+        device->info.u.hid.dwProductId = attr.ProductID;
+        device->info.u.hid.dwVersionNumber = attr.VersionNumber;
+
+        if (!HidD_GetPreparsedData(device->file, &device->data))
+            WARN("Failed to get preparsed data.\n");
+
+        if (!HidP_GetCaps(device->data, &caps))
+            WARN("Failed to get caps.\n");
+
+        device->info.u.hid.usUsagePage = caps.UsagePage;
+        device->info.u.hid.usUsage = caps.Usage;
     }
 
     SetupDiDestroyDeviceInfoList(set);
@@ -299,7 +301,12 @@ BOOL rawinput_from_hardware_message(RAWINPUT *rawinput, const struct hardware_ms
         rawinput->header.hDevice = WINE_MOUSE_HANDLE;
         rawinput->header.wParam  = 0;
 
-        rawinput->data.mouse.usFlags           = MOUSE_MOVE_RELATIVE;
+        if (msg_data->flags & MOUSEEVENTF_ABSOLUTE)
+            rawinput->data.mouse.usFlags = MOUSE_MOVE_ABSOLUTE;
+        else
+            rawinput->data.mouse.usFlags = MOUSE_MOVE_RELATIVE;
+        if (msg_data->flags & MOUSEEVENTF_VIRTUALDESK)
+            rawinput->data.mouse.usFlags |= MOUSE_VIRTUAL_DESKTOP;
         rawinput->data.mouse.u.s.usButtonFlags = 0;
         rawinput->data.mouse.u.s.usButtonData  = 0;
         for (i = 1; i < ARRAY_SIZE(button_flags); ++i)
@@ -370,6 +377,22 @@ BOOL rawinput_from_hardware_message(RAWINPUT *rawinput, const struct hardware_ms
 
         rawinput->data.keyboard.Message          = msg_data->rawinput.kbd.message;
         rawinput->data.keyboard.ExtraInformation = msg_data->info;
+    }
+    else if (msg_data->rawinput.type == RIM_TYPEHID)
+    {
+        if (sizeof(*rawinput) + msg_data->rawinput.hid.length > RAWINPUT_BUFFER_SIZE)
+        {
+            ERR( "unexpectedly large hardware message dropped\n" );
+            return FALSE;
+        }
+
+        rawinput->header.dwSize  = FIELD_OFFSET( RAWINPUT, data.hid.bRawData ) + msg_data->rawinput.hid.length;
+        rawinput->header.hDevice = ULongToHandle( msg_data->rawinput.hid.device );
+        rawinput->header.wParam  = 0;
+
+        rawinput->data.hid.dwSizeHid = msg_data->rawinput.hid.length;
+        rawinput->data.hid.dwCount = 1;
+        memcpy( rawinput->data.hid.bRawData, msg_data + 1, msg_data->rawinput.hid.length );
     }
     else
     {
@@ -468,7 +491,7 @@ BOOL WINAPI DECLSPEC_HOTPATCH RegisterRawInputDevices(RAWINPUTDEVICE *devices, U
         TRACE("device %u: page %#x, usage %#x, flags %#x, target %p.\n",
                 i, devices[i].usUsagePage, devices[i].usUsage,
                 devices[i].dwFlags, devices[i].hwndTarget);
-        if (devices[i].dwFlags & ~(RIDEV_REMOVE|RIDEV_NOLEGACY|RIDEV_INPUTSINK))
+        if (devices[i].dwFlags & ~(RIDEV_REMOVE|RIDEV_NOLEGACY|RIDEV_INPUTSINK|RIDEV_DEVNOTIFY))
             FIXME("Unhandled flags %#x for device %u.\n", devices[i].dwFlags, i);
 
         d[i].usage_page = devices[i].usUsagePage;
@@ -564,7 +587,7 @@ UINT WINAPI DECLSPEC_HOTPATCH GetRawInputBuffer(RAWINPUT *data, UINT *data_size,
     struct hardware_msg_data *msg_data;
     struct rawinput_thread_data *thread_data;
     RAWINPUT *rawinput;
-    UINT count = 0, rawinput_size, next_size, overhead;
+    UINT count = 0, rawinput_size, msg_size, next_size, overhead;
     BOOL is_wow64;
     int i;
 
@@ -624,7 +647,9 @@ UINT WINAPI DECLSPEC_HOTPATCH GetRawInputBuffer(RAWINPUT *data, UINT *data_size,
                               data->header.dwSize - sizeof(RAWINPUTHEADER));
         data->header.dwSize += overhead;
         data = NEXTRAWINPUTBLOCK(data);
-        msg_data++;
+        msg_size = sizeof(*msg_data);
+        if (msg_data->rawinput.type == RIM_TYPEHID) msg_size += msg_data->rawinput.hid.length;
+        msg_data = (struct hardware_msg_data *)((char *)msg_data + msg_size);
     }
 
     if (count == 0 && next_size == 0) *data_size = 0;
