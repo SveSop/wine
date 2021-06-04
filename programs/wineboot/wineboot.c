@@ -341,7 +341,7 @@ static BOOL is_tsc_trusted_by_the_kernel(void)
     return ret;
 }
 
-static void initialize_qpc_features(struct _KUSER_SHARED_DATA *data)
+static void initialize_qpc_features(struct _KUSER_SHARED_DATA *data, UINT64 tsc_frequency)
 {
     int regs[4];
 
@@ -390,7 +390,7 @@ static void initialize_qpc_features(struct _KUSER_SHARED_DATA *data)
     else
         data->QpcBypassEnabled |= SHARED_GLOBAL_FLAGS_QPC_BYPASS_USE_MFENCE;
 
-    if ((data->QpcFrequency = (read_tsc_frequency() >> 10)))
+    if ((data->QpcFrequency = (tsc_frequency >> 10)))
     {
         data->QpcShift = 10;
         data->QpcBias = 0;
@@ -435,7 +435,7 @@ static UINT64 muldiv_tsc(UINT64 a, UINT64 b, UINT64 c)
     return ka * kb * c + kb * ra + ka * rb + (ra * rb + c / 2) / c;
 }
 
-static void create_hypervisor_shared_data(void)
+static void create_hypervisor_shared_data(UINT64 tsc_frequency)
 {
     struct _KUSER_SHARED_DATA *user_shared_data = (void *)0x7ffe0000;
     struct hypervisor_shared_data *hypervisor_shared_data;
@@ -482,7 +482,7 @@ static void create_hypervisor_shared_data(void)
 
     if (user_shared_data->QpcBypassEnabled & SHARED_GLOBAL_FLAGS_QPC_BYPASS_ENABLED)
     {
-        hypervisor_shared_data->QpcMultiplier = muldiv_tsc((UINT64)5000 << 32, (UINT64)2000 << 32, read_tsc_frequency());
+        hypervisor_shared_data->QpcMultiplier = muldiv_tsc((UINT64)5000 << 32, (UINT64)2000 << 32, tsc_frequency);
         user_shared_data->QpcBypassEnabled |= SHARED_GLOBAL_FLAGS_QPC_BYPASS_USE_HV_PAGE;
         user_shared_data->QpcInterruptTimeIncrement = (ULONGLONG)1 << 63;
         user_shared_data->QpcInterruptTimeIncrementShift = 1;
@@ -497,7 +497,7 @@ static void create_hypervisor_shared_data(void)
     UnmapViewOfFile( hypervisor_shared_data );
 }
 
-static void create_user_shared_data(void)
+static void create_user_shared_data(UINT64 tsc_frequency)
 {
     struct _KUSER_SHARED_DATA *data;
     RTL_OSVERSIONINFOEXW version;
@@ -584,7 +584,7 @@ static void create_user_shared_data(void)
     data->ActiveGroupCount = 1;
 
     initialize_xstate_features( data );
-    initialize_qpc_features( data );
+    initialize_qpc_features( data, tsc_frequency );
 
     UnmapViewOfFile( data );
 }
@@ -896,7 +896,7 @@ done:
 }
 
 /* create the volatile hardware registry keys */
-static void create_hardware_registry_keys(void)
+static void create_hardware_registry_keys(UINT64 tsc_frequency)
 {
     unsigned int i;
     HKEY hkey, system_key, cpu_key, fpu_key;
@@ -971,8 +971,7 @@ static void create_hardware_registry_keys(void)
         if (!RegCreateKeyExW( cpu_key, numW, 0, NULL, REG_OPTION_VOLATILE,
                               KEY_ALL_ACCESS, NULL, &hkey, NULL ))
         {
-            UINT64 tsc_freq = read_tsc_frequency(); /* Hz */
-            DWORD tsc_freq_mhz = (DWORD)(tsc_freq / 1000000ull);
+            DWORD tsc_freq_mhz = (DWORD)(tsc_frequency / 1000000ull); /* Hz -> Mhz */
 
             RegSetValueExW( hkey, L"FeatureSet", 0, REG_DWORD, (BYTE *)&sci.ProcessorFeatureBits, sizeof(DWORD) );
             set_reg_value( hkey, L"Identifier", id );
@@ -2159,8 +2158,11 @@ int __cdecl main( int argc, char *argv[] )
     BOOL end_session, force, init, kill, restart, shutdown, update;
     HANDLE event;
     OBJECT_ATTRIBUTES attr;
+    UINT64 tsc_frequency;
     UNICODE_STRING nameW;
     BOOL is_wow64;
+
+    tsc_frequency = read_tsc_frequency();
 
     end_session = force = init = kill = restart = shutdown = update = FALSE;
     GetWindowsDirectoryW( windowsdir, MAX_PATH );
@@ -2245,9 +2247,9 @@ int __cdecl main( int argc, char *argv[] )
 
     ResetEvent( event );  /* in case this is a restart */
 
-    create_user_shared_data();
-    create_hypervisor_shared_data();
-    create_hardware_registry_keys();
+    create_user_shared_data(tsc_frequency);
+    create_hypervisor_shared_data(tsc_frequency);
+    create_hardware_registry_keys(tsc_frequency);
     create_software_registry_keys();
     create_dynamic_registry_keys();
     create_environment_registry_keys();
