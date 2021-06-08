@@ -297,6 +297,12 @@
 /* Define to 1 if you have the `ldap_parse_vlv_control' function. */
 #undef HAVE_LDAP_PARSE_VLV_CONTROL
 
+/* Define to 1 if you have the `lgamma' function. */
+#undef HAVE_LGAMMA
+
+/* Define to 1 if you have the `lgammaf' function. */
+#undef HAVE_LGAMMAF
+
 /* Define to 1 if you have the `gettextpo' library (-lgettextpo). */
 #undef HAVE_LIBGETTEXTPO
 
@@ -401,6 +407,18 @@
 
 /* Define to 1 if you have the <linux/videodev2.h> header file. */
 #undef HAVE_LINUX_VIDEODEV2_H
+
+/* Define to 1 if you have the `log1p' function. */
+#undef HAVE_LOG1P
+
+/* Define to 1 if you have the `log1pf' function. */
+#undef HAVE_LOG1PF
+
+/* Define to 1 if you have the `log2' function. */
+#undef HAVE_LOG2
+
+/* Define to 1 if you have the `log2f' function. */
+#undef HAVE_LOG2F
 
 /* Define to 1 if you have the `lstat' function. */
 #undef HAVE_LSTAT
@@ -609,8 +627,8 @@
 /* Define to 1 if you have the <scsi/sg.h> header file. */
 #undef HAVE_SCSI_SG_H
 
-/* Define to 1 if you have the <SDL.h> header file. */
-#undef HAVE_SDL_H
+/* Define to 1 if you have the <SDL2/SDL.h> header file. */
+#undef HAVE_SDL2_SDL_H
 
 /* Define to 1 if you have the <Security/Security.h> header file. */
 #undef HAVE_SECURITY_SECURITY_H
