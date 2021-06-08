@@ -1582,6 +1582,22 @@ typedef VkBindSparseInfo VkBindSparseInfo_host;
 #endif
 
 #if defined(USE_STRUCT_CONVERSION)
+typedef struct VkPresentInfoKHR_host
+{
+    VkStructureType sType;
+    const void *pNext;
+    uint32_t waitSemaphoreCount;
+    const VkSemaphore *pWaitSemaphores;
+    uint32_t swapchainCount;
+    const VkSwapchainKHR *pSwapchains;
+    const uint32_t *pImageIndices;
+    VkResult *pResults;
+} VkPresentInfoKHR_host;
+#else
+typedef VkPresentInfoKHR VkPresentInfoKHR_host;
+#endif
+
+#if defined(USE_STRUCT_CONVERSION)
 typedef struct VkSubmitInfo_host
 {
     VkStructureType sType;
@@ -1725,10 +1741,6 @@ void free_VkDeviceCreateInfo_struct_chain(VkDeviceCreateInfo *s) DECLSPEC_HIDDEN
 VkResult convert_VkInstanceCreateInfo_struct_chain(const void *pNext, VkInstanceCreateInfo *out_struct) DECLSPEC_HIDDEN;
 void free_VkInstanceCreateInfo_struct_chain(VkInstanceCreateInfo *s) DECLSPEC_HIDDEN;
 
-VkBufferMemoryBarrier_host *convert_VkBufferMemoryBarrier_array_win_to_host(const VkBufferMemoryBarrier *in, uint32_t count);
-void free_VkBufferMemoryBarrier_array(VkBufferMemoryBarrier_host *in, uint32_t count);
-VkImageMemoryBarrier_host *convert_VkImageMemoryBarrier_array_win_to_host(const VkImageMemoryBarrier *in, uint32_t count);
-void free_VkImageMemoryBarrier_array(VkImageMemoryBarrier_host *in, uint32_t count);
 /* For use by vkDevice and children */
 struct vulkan_device_funcs
 {
