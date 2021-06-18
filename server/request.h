@@ -272,6 +272,7 @@ DECL_HANDLER(get_visible_region);
 DECL_HANDLER(get_surface_region);
 DECL_HANDLER(get_window_region);
 DECL_HANDLER(set_window_region);
+DECL_HANDLER(set_layer_region);
 DECL_HANDLER(get_update_region);
 DECL_HANDLER(update_window_zorder);
 DECL_HANDLER(redraw_window);
@@ -375,6 +376,7 @@ DECL_HANDLER(add_fd_completion);
 DECL_HANDLER(set_fd_completion_mode);
 DECL_HANDLER(set_fd_disp_info);
 DECL_HANDLER(set_fd_name_info);
+DECL_HANDLER(set_fd_eof_info);
 DECL_HANDLER(get_window_layered_info);
 DECL_HANDLER(set_window_layered_info);
 DECL_HANDLER(alloc_user_handle);
@@ -554,6 +556,7 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_get_surface_region,
     (req_handler)req_get_window_region,
     (req_handler)req_set_window_region,
+    (req_handler)req_set_layer_region,
     (req_handler)req_get_update_region,
     (req_handler)req_update_window_zorder,
     (req_handler)req_redraw_window,
@@ -657,6 +660,7 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_set_fd_completion_mode,
     (req_handler)req_set_fd_disp_info,
     (req_handler)req_set_fd_name_info,
+    (req_handler)req_set_fd_eof_info,
     (req_handler)req_get_window_layered_info,
     (req_handler)req_set_window_layered_info,
     (req_handler)req_alloc_user_handle,
@@ -999,7 +1003,8 @@ C_ASSERT( sizeof(struct alloc_file_handle_request) == 24 );
 C_ASSERT( FIELD_OFFSET(struct alloc_file_handle_reply, handle) == 8 );
 C_ASSERT( sizeof(struct alloc_file_handle_reply) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_handle_unix_name_request, handle) == 12 );
-C_ASSERT( sizeof(struct get_handle_unix_name_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_handle_unix_name_request, nofollow) == 16 );
+C_ASSERT( sizeof(struct get_handle_unix_name_request) == 24 );
 C_ASSERT( FIELD_OFFSET(struct get_handle_unix_name_reply, name_len) == 8 );
 C_ASSERT( sizeof(struct get_handle_unix_name_reply) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_handle_fd_request, handle) == 12 );
@@ -1059,7 +1064,8 @@ C_ASSERT( sizeof(struct get_socket_info_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_socket_info_reply, family) == 8 );
 C_ASSERT( FIELD_OFFSET(struct get_socket_info_reply, type) == 12 );
 C_ASSERT( FIELD_OFFSET(struct get_socket_info_reply, protocol) == 16 );
-C_ASSERT( sizeof(struct get_socket_info_reply) == 24 );
+C_ASSERT( FIELD_OFFSET(struct get_socket_info_reply, connect_time) == 24 );
+C_ASSERT( sizeof(struct get_socket_info_reply) == 32 );
 C_ASSERT( FIELD_OFFSET(struct set_socket_deferred_request, handle) == 12 );
 C_ASSERT( FIELD_OFFSET(struct set_socket_deferred_request, deferred) == 16 );
 C_ASSERT( sizeof(struct set_socket_deferred_request) == 24 );
@@ -1608,6 +1614,8 @@ C_ASSERT( sizeof(struct get_window_region_reply) == 16 );
 C_ASSERT( FIELD_OFFSET(struct set_window_region_request, window) == 12 );
 C_ASSERT( FIELD_OFFSET(struct set_window_region_request, redraw) == 16 );
 C_ASSERT( sizeof(struct set_window_region_request) == 24 );
+C_ASSERT( FIELD_OFFSET(struct set_layer_region_request, window) == 12 );
+C_ASSERT( sizeof(struct set_layer_region_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_update_region_request, window) == 12 );
 C_ASSERT( FIELD_OFFSET(struct get_update_region_request, from_child) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_update_region_request, flags) == 20 );
@@ -2170,6 +2178,9 @@ C_ASSERT( FIELD_OFFSET(struct set_fd_name_info_request, namelen) == 20 );
 C_ASSERT( FIELD_OFFSET(struct set_fd_name_info_request, link) == 24 );
 C_ASSERT( FIELD_OFFSET(struct set_fd_name_info_request, replace) == 28 );
 C_ASSERT( sizeof(struct set_fd_name_info_request) == 32 );
+C_ASSERT( FIELD_OFFSET(struct set_fd_eof_info_request, handle) == 12 );
+C_ASSERT( FIELD_OFFSET(struct set_fd_eof_info_request, eof) == 16 );
+C_ASSERT( sizeof(struct set_fd_eof_info_request) == 24 );
 C_ASSERT( FIELD_OFFSET(struct get_window_layered_info_request, handle) == 12 );
 C_ASSERT( sizeof(struct get_window_layered_info_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct get_window_layered_info_reply, color_key) == 8 );

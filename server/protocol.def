@@ -1338,6 +1338,7 @@ enum event_op { PULSE_EVENT, SET_EVENT, RESET_EVENT };
 /* Get the Unix name from a file handle */
 @REQ(get_handle_unix_name)
     obj_handle_t   handle;      /* file handle */
+    int            nofollow;    /* do not follow symlinks (return the link) */
 @REPLY
     data_size_t    name_len;    /* unix name length */
     VARARG(name,string);        /* unix name */
@@ -1357,6 +1358,7 @@ enum server_fd_type
 {
     FD_TYPE_INVALID,  /* invalid file (no associated fd) */
     FD_TYPE_FILE,     /* regular file */
+    FD_TYPE_SYMLINK,  /* symbolic link */
     FD_TYPE_DIR,      /* directory */
     FD_TYPE_SOCKET,   /* socket */
     FD_TYPE_SERIAL,   /* serial port */
@@ -1453,6 +1455,7 @@ enum server_fd_type
     int family;                 /* family, see socket manpage */
     int type;                   /* type, see socket manpage */
     int protocol;               /* protocol, see socket manpage */
+    timeout_t connect_time;     /* time the socket was connected (relative) */
 @END
 
 
@@ -2072,6 +2075,7 @@ enum message_type
     VARARG(keystate,bytes);    /* global state array for all the keys */
 @END
 #define SEND_HWMSG_INJECTED    0x01
+#define SEND_HWMSG_RAWINPUT    0x02
 
 
 /* Get a message from the current queue */
@@ -2519,6 +2523,13 @@ enum coords_relative
 @REQ(set_window_region)
     user_handle_t  window;        /* handle to the window */
     int            redraw;        /* redraw the window? */
+    VARARG(region,rectangles);    /* list of rectangles for the region (in window coords) */
+@END
+
+
+/* Set the layer region */
+@REQ(set_layer_region)
+    user_handle_t  window;        /* handle to the window */
     VARARG(region,rectangles);    /* list of rectangles for the region (in window coords) */
 @END
 
@@ -3569,6 +3580,13 @@ struct handle_info
     int          replace;         /* replace an existing file? */
     VARARG(name,unicode_str,namelen); /* NT name */
     VARARG(filename,string);      /* new file name */
+@END
+
+
+/* set fd eof information */
+@REQ(set_fd_eof_info)
+    obj_handle_t handle;        /* handle to a file or directory */
+    file_pos_t   eof;           /* offset of eof of file */
 @END
 
 
