@@ -1489,7 +1489,8 @@ static void dump_get_startup_info_reply( const struct get_startup_info_reply *re
 
 static void dump_init_process_done_request( const struct init_process_done_request *req )
 {
-    dump_uint64( " teb=", &req->teb );
+    dump_varargs_cpu_topology_override( " cpu_override=", cur_size );
+    dump_uint64( ", teb=", &req->teb );
     dump_uint64( ", peb=", &req->peb );
     dump_uint64( ", ldt_copy=", &req->ldt_copy );
 }
@@ -1525,7 +1526,6 @@ static void dump_init_thread_request( const struct init_thread_request *req )
     fprintf( stderr, ", wait_fd=%d", req->wait_fd );
     dump_uint64( ", teb=", &req->teb );
     dump_uint64( ", entry=", &req->entry );
-    dump_varargs_cpu_topology_override( ", cpu_override=", cur_size );
 }
 
 static void dump_init_thread_reply( const struct init_thread_reply *req )
@@ -2954,6 +2954,7 @@ static void dump_create_window_reply( const struct create_window_reply *req )
     dump_uint64( ", class_ptr=", &req->class_ptr );
     fprintf( stderr, ", dpi=%d", req->dpi );
     fprintf( stderr, ", awareness=%d", req->awareness );
+    fprintf( stderr, ", needs_cloak=%d", req->needs_cloak );
 }
 
 static void dump_destroy_window_request( const struct destroy_window_request *req )
@@ -2982,6 +2983,7 @@ static void dump_set_window_owner_reply( const struct set_window_owner_reply *re
 {
     fprintf( stderr, " full_owner=%08x", req->full_owner );
     fprintf( stderr, ", prev_owner=%08x", req->prev_owner );
+    fprintf( stderr, ", needs_cloak=%d", req->needs_cloak );
 }
 
 static void dump_get_window_info_request( const struct get_window_info_request *req )
@@ -3024,6 +3026,28 @@ static void dump_set_window_info_reply( const struct set_window_info_reply *req 
     dump_uint64( ", old_user_data=", &req->old_user_data );
     dump_uint64( ", old_extra_value=", &req->old_extra_value );
     fprintf( stderr, ", old_id=%08x", req->old_id );
+}
+
+static void dump_get_window_cloaked_request( const struct get_window_cloaked_request *req )
+{
+    fprintf( stderr, " handle=%08x", req->handle );
+}
+
+static void dump_get_window_cloaked_reply( const struct get_window_cloaked_reply *req )
+{
+    fprintf( stderr, " cloaked=%08x", req->cloaked );
+}
+
+static void dump_set_window_cloaked_request( const struct set_window_cloaked_request *req )
+{
+    fprintf( stderr, " handle=%08x", req->handle );
+    fprintf( stderr, ", cloaked=%08x", req->cloaked );
+}
+
+static void dump_set_window_cloaked_reply( const struct set_window_cloaked_reply *req )
+{
+    fprintf( stderr, " count=%08x", req->count );
+    dump_varargs_user_handles( ", windows=", cur_size );
 }
 
 static void dump_set_parent_request( const struct set_parent_request *req )
@@ -4809,6 +4833,8 @@ static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_set_window_owner_request,
     (dump_func)dump_get_window_info_request,
     (dump_func)dump_set_window_info_request,
+    (dump_func)dump_get_window_cloaked_request,
+    (dump_func)dump_set_window_cloaked_request,
     (dump_func)dump_set_parent_request,
     (dump_func)dump_get_window_parents_request,
     (dump_func)dump_get_window_children_request,
@@ -5098,6 +5124,8 @@ static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_set_window_owner_reply,
     (dump_func)dump_get_window_info_reply,
     (dump_func)dump_set_window_info_reply,
+    (dump_func)dump_get_window_cloaked_reply,
+    (dump_func)dump_set_window_cloaked_reply,
     (dump_func)dump_set_parent_reply,
     (dump_func)dump_get_window_parents_reply,
     (dump_func)dump_get_window_children_reply,
@@ -5387,6 +5415,8 @@ static const char * const req_names[REQ_NB_REQUESTS] = {
     "set_window_owner",
     "get_window_info",
     "set_window_info",
+    "get_window_cloaked",
+    "set_window_cloaked",
     "set_parent",
     "get_window_parents",
     "get_window_children",
