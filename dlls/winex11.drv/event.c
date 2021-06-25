@@ -245,6 +245,13 @@ static Bool filter_event( Display *display, XEvent *event, char *arg )
         return (mask & QS_MOUSEBUTTON) != 0;
 #ifdef GenericEvent
     case GenericEvent:
+#ifdef HAVE_X11_EXTENSIONS_XINPUT2_H
+        if (event->xcookie.extension == xinput2_opcode &&
+            (event->xcookie.evtype == XI_RawMotion ||
+             event->xcookie.evtype == XI_DeviceChanged))
+            return (mask & QS_MOUSEMOVE) != 0;
+#endif
+        return (mask & QS_SENDMESSAGE) != 0;
 #endif
     case MotionNotify:
     case EnterNotify:
@@ -321,6 +328,10 @@ static enum event_merge_action merge_raw_motion_events( XIRawEvent *prev, XIRawE
  */
 static enum event_merge_action merge_events( XEvent *prev, XEvent *next )
 {
+#ifdef HAVE_X11_EXTENSIONS_XINPUT2_H
+    struct x11drv_thread_data *thread_data = x11drv_thread_data();
+#endif
+
     switch (prev->type)
     {
     case ConfigureNotify:
@@ -352,19 +363,21 @@ static enum event_merge_action merge_events( XEvent *prev, XEvent *next )
         case GenericEvent:
             if (next->xcookie.extension != xinput2_opcode) break;
             if (next->xcookie.evtype != XI_RawMotion) break;
-            if (x11drv_thread_data()->warp_serial) break;
+            if (thread_data->xi2_rawinput_only) break;
+            if (thread_data->warp_serial) break;
             return MERGE_KEEP;
         }
         break;
     case GenericEvent:
         if (prev->xcookie.extension != xinput2_opcode) break;
         if (prev->xcookie.evtype != XI_RawMotion) break;
+        if (thread_data->xi2_rawinput_only) break;
         switch (next->type)
         {
         case GenericEvent:
             if (next->xcookie.extension != xinput2_opcode) break;
             if (next->xcookie.evtype != XI_RawMotion) break;
-            if (x11drv_thread_data()->warp_serial) break;
+            if (thread_data->warp_serial) break;
             return merge_raw_motion_events( prev->xcookie.data, next->xcookie.data );
 #endif
         }
@@ -988,6 +1001,7 @@ static BOOL X11DRV_Expose( HWND hwnd, XEvent *xev )
 static BOOL X11DRV_MapNotify( HWND hwnd, XEvent *event )
 {
     struct x11drv_win_data *data;
+    BOOL is_embedded;
 
     if (event->xany.window == x11drv_thread_data()->clip_window) return TRUE;
 
@@ -999,7 +1013,12 @@ static BOOL X11DRV_MapNotify( HWND hwnd, XEvent *event )
         if (hwndFocus && IsChild( hwnd, hwndFocus ))
             set_input_focus( data );
     }
+
+    is_embedded = data->embedded;
     release_win_data( data );
+
+    if (is_embedded)
+        EnableWindow( hwnd, TRUE );
     return TRUE;
 }
 
@@ -1009,6 +1028,17 @@ static BOOL X11DRV_MapNotify( HWND hwnd, XEvent *event )
  */
 static BOOL X11DRV_UnmapNotify( HWND hwnd, XEvent *event )
 {
+    struct x11drv_win_data *data;
+    BOOL is_embedded;
+
+    if (!(data = get_win_data( hwnd ))) return FALSE;
+
+    is_embedded = data->embedded;
+    release_win_data( data );
+
+    if (is_embedded)
+        EnableWindow( hwnd, FALSE );
+
     return TRUE;
 }
 

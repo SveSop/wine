@@ -68,6 +68,7 @@ struct buffer
         ID3D11Texture2D *texture;
         unsigned int sub_resource_idx;
         ID3D11Texture2D *rb_texture;
+        DXGI_FORMAT rb_texture_format;
         D3D11_MAPPED_SUBRESOURCE map_desc;
         struct attributes attributes;
     } dxgi_surface;
@@ -890,6 +891,7 @@ static HRESULT dxgi_surface_buffer_create_readback_texture(struct buffer *buffer
     texture_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
     texture_desc.MiscFlags = 0;
     texture_desc.MipLevels = 1;
+    buffer->dxgi_surface.rb_texture_format = texture_desc.Format;
     if (FAILED(hr = ID3D11Device_CreateTexture2D(device, &texture_desc, NULL, &buffer->dxgi_surface.rb_texture)))
         WARN("Failed to create readback texture, hr %#x.\n", hr);
 
@@ -947,6 +949,7 @@ static HRESULT WINAPI dxgi_surface_buffer_Lock(IMFMediaBuffer *iface, BYTE **dat
 {
     struct buffer *buffer = impl_from_IMFMediaBuffer(iface);
     HRESULT hr = S_OK;
+    DWORD lines;
 
     TRACE("%p, %p, %p, %p.\n", iface, data, max_length, current_length);
 
@@ -967,8 +970,13 @@ static HRESULT WINAPI dxgi_surface_buffer_Lock(IMFMediaBuffer *iface, BYTE **dat
             hr = dxgi_surface_buffer_map(buffer);
             if (SUCCEEDED(hr))
             {
+                if (buffer->dxgi_surface.rb_texture_format == DXGI_FORMAT_NV12)
+                    lines = buffer->_2d.height * 3 / 2;
+                else
+                    lines = buffer->_2d.height;
+
                 copy_image(buffer, buffer->_2d.linear_buffer, buffer->_2d.width, buffer->dxgi_surface.map_desc.pData,
-                        buffer->dxgi_surface.map_desc.RowPitch, buffer->_2d.width, buffer->_2d.height);
+                        buffer->dxgi_surface.map_desc.RowPitch, buffer->_2d.width, lines);
             }
         }
     }
@@ -992,6 +1000,7 @@ static HRESULT WINAPI dxgi_surface_buffer_Unlock(IMFMediaBuffer *iface)
 {
     struct buffer *buffer = impl_from_IMFMediaBuffer(iface);
     HRESULT hr = S_OK;
+    DWORD lines;
 
     TRACE("%p.\n", iface);
 
@@ -1001,8 +1010,13 @@ static HRESULT WINAPI dxgi_surface_buffer_Unlock(IMFMediaBuffer *iface)
         hr = HRESULT_FROM_WIN32(ERROR_WAS_UNLOCKED);
     else if (!--buffer->_2d.locks)
     {
+        if (buffer->dxgi_surface.rb_texture_format == DXGI_FORMAT_NV12)
+            lines = buffer->_2d.height * 3 / 2;
+        else
+            lines = buffer->_2d.height;
+
         copy_image(buffer, buffer->dxgi_surface.map_desc.pData, buffer->dxgi_surface.map_desc.RowPitch,
-                buffer->_2d.linear_buffer, buffer->_2d.width, buffer->_2d.width, buffer->_2d.height);
+                buffer->_2d.linear_buffer, buffer->_2d.width, buffer->_2d.width, lines);
         dxgi_surface_buffer_unmap(buffer);
 
         free(buffer->_2d.linear_buffer);
