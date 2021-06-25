@@ -735,6 +735,77 @@ static inline void free_VkGeneratedCommandsInfoNV(VkGeneratedCommandsInfoNV_host
 #endif /* USE_STRUCT_CONVERSION */
 
 #if defined(USE_STRUCT_CONVERSION)
+static inline VkBufferMemoryBarrier_host *convert_VkBufferMemoryBarrier_array_win_to_host(const VkBufferMemoryBarrier *in, uint32_t count)
+{
+    VkBufferMemoryBarrier_host *out;
+    unsigned int i;
+
+    if (!in) return NULL;
+
+    out = malloc(count * sizeof(*out));
+    for (i = 0; i < count; i++)
+    {
+        out[i].sType = in[i].sType;
+        out[i].pNext = in[i].pNext;
+        out[i].srcAccessMask = in[i].srcAccessMask;
+        out[i].dstAccessMask = in[i].dstAccessMask;
+        out[i].srcQueueFamilyIndex = in[i].srcQueueFamilyIndex;
+        out[i].dstQueueFamilyIndex = in[i].dstQueueFamilyIndex;
+        out[i].buffer = in[i].buffer;
+        out[i].offset = in[i].offset;
+        out[i].size = in[i].size;
+    }
+
+    return out;
+}
+#endif /* USE_STRUCT_CONVERSION */
+
+#if defined(USE_STRUCT_CONVERSION)
+static inline void free_VkBufferMemoryBarrier_array(VkBufferMemoryBarrier_host *in, uint32_t count)
+{
+    if (!in) return;
+
+    free(in);
+}
+#endif /* USE_STRUCT_CONVERSION */
+
+#if defined(USE_STRUCT_CONVERSION)
+static inline VkImageMemoryBarrier_host *convert_VkImageMemoryBarrier_array_win_to_host(const VkImageMemoryBarrier *in, uint32_t count)
+{
+    VkImageMemoryBarrier_host *out;
+    unsigned int i;
+
+    if (!in) return NULL;
+
+    out = malloc(count * sizeof(*out));
+    for (i = 0; i < count; i++)
+    {
+        out[i].sType = in[i].sType;
+        out[i].pNext = in[i].pNext;
+        out[i].srcAccessMask = in[i].srcAccessMask;
+        out[i].dstAccessMask = in[i].dstAccessMask;
+        out[i].oldLayout = in[i].oldLayout;
+        out[i].newLayout = in[i].newLayout;
+        out[i].srcQueueFamilyIndex = in[i].srcQueueFamilyIndex;
+        out[i].dstQueueFamilyIndex = in[i].dstQueueFamilyIndex;
+        out[i].image = in[i].image;
+        out[i].subresourceRange = in[i].subresourceRange;
+    }
+
+    return out;
+}
+#endif /* USE_STRUCT_CONVERSION */
+
+#if defined(USE_STRUCT_CONVERSION)
+static inline void free_VkImageMemoryBarrier_array(VkImageMemoryBarrier_host *in, uint32_t count)
+{
+    if (!in) return;
+
+    free(in);
+}
+#endif /* USE_STRUCT_CONVERSION */
+
+#if defined(USE_STRUCT_CONVERSION)
 static inline VkBufferMemoryBarrier2KHR_host *convert_VkBufferMemoryBarrier2KHR_array_win_to_host(const VkBufferMemoryBarrier2KHR *in, uint32_t count)
 {
     VkBufferMemoryBarrier2KHR_host *out;
@@ -4256,69 +4327,6 @@ void free_VkInstanceCreateInfo_struct_chain(VkInstanceCreateInfo *s)
     }
 
     s->pNext = NULL;
-}
-
-VkBufferMemoryBarrier_host *convert_VkBufferMemoryBarrier_array_win_to_host(const VkBufferMemoryBarrier *in, uint32_t count)
-{
-    VkBufferMemoryBarrier_host *out;
-    unsigned int i;
-
-    if (!in) return NULL;
-
-    out = malloc(count * sizeof(*out));
-    for (i = 0; i < count; i++)
-    {
-        out[i].sType = in[i].sType;
-        out[i].pNext = in[i].pNext;
-        out[i].srcAccessMask = in[i].srcAccessMask;
-        out[i].dstAccessMask = in[i].dstAccessMask;
-        out[i].srcQueueFamilyIndex = in[i].srcQueueFamilyIndex;
-        out[i].dstQueueFamilyIndex = in[i].dstQueueFamilyIndex;
-        out[i].buffer = in[i].buffer;
-        out[i].offset = in[i].offset;
-        out[i].size = in[i].size;
-    }
-
-    return out;
-}
-
-void free_VkBufferMemoryBarrier_array(VkBufferMemoryBarrier_host *in, uint32_t count)
-{
-    if (!in) return;
-
-    free(in);
-}
-
-VkImageMemoryBarrier_host *convert_VkImageMemoryBarrier_array_win_to_host(const VkImageMemoryBarrier *in, uint32_t count)
-{
-    VkImageMemoryBarrier_host *out;
-    unsigned int i;
-
-    if (!in) return NULL;
-
-    out = malloc(count * sizeof(*out));
-    for (i = 0; i < count; i++)
-    {
-        out[i].sType = in[i].sType;
-        out[i].pNext = in[i].pNext;
-        out[i].srcAccessMask = in[i].srcAccessMask;
-        out[i].dstAccessMask = in[i].dstAccessMask;
-        out[i].oldLayout = in[i].oldLayout;
-        out[i].newLayout = in[i].newLayout;
-        out[i].srcQueueFamilyIndex = in[i].srcQueueFamilyIndex;
-        out[i].dstQueueFamilyIndex = in[i].dstQueueFamilyIndex;
-        out[i].image = in[i].image;
-        out[i].subresourceRange = in[i].subresourceRange;
-    }
-
-    return out;
-}
-
-void free_VkImageMemoryBarrier_array(VkImageMemoryBarrier_host *in, uint32_t count)
-{
-    if (!in) return;
-
-    free(in);
 }
 
 static VkResult WINAPI wine_vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex)

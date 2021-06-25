@@ -460,26 +460,26 @@
 #define VK_USE_64_BIT_PTR_DEFINES 0
 
 #ifndef VK_DEFINE_NON_DISPATCHABLE_HANDLE
-#if (VK_USE_64_BIT_PTR_DEFINES==1)
-#if __cplusplus >= 201103L || (defined(_MSVC_LANG) && (_MSVC_LANG >= 201103L))
-#define VK_NULL_HANDLE nullptr
-#else
-#define VK_NULL_HANDLE ((void*)0)
-#endif
-#else
-#define VK_NULL_HANDLE 0ULL
-#endif
+    #if (VK_USE_64_BIT_PTR_DEFINES==1)
+        #if __cplusplus >= 201103L || (defined(_MSVC_LANG) && (_MSVC_LANG >= 201103L))
+            #define VK_NULL_HANDLE nullptr
+        #else
+            #define VK_NULL_HANDLE ((void*)0)
+        #endif
+    #else
+        #define VK_NULL_HANDLE 0ULL
+    #endif
 #endif
 #ifndef VK_NULL_HANDLE
-#define VK_NULL_HANDLE 0
+    #define VK_NULL_HANDLE 0
 #endif
 
 #ifndef VK_DEFINE_NON_DISPATCHABLE_HANDLE
-#if (VK_USE_64_BIT_PTR_DEFINES==1)
-#define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef struct object##_T *object;
-#else
-#define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef uint64_t object;
-#endif
+    #if (VK_USE_64_BIT_PTR_DEFINES==1)
+        #define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef struct object##_T *object;
+    #else
+        #define VK_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef uint64_t object;
+    #endif
 #endif
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VkAccelerationStructureKHR)
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VkAccelerationStructureNV)
@@ -2679,8 +2679,8 @@ typedef VkResolveModeFlagBits VkResolveModeFlagBitsKHR;
 
 typedef enum VkResult
 {
-    VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT = -1000255000,
     VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS = -1000257000,
+    VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT = -1000255000,
     VK_ERROR_NOT_PERMITTED_EXT = -1000174001,
     VK_ERROR_FRAGMENTATION = -1000161000,
     VK_ERROR_INVALID_EXTERNAL_HANDLE = -1000072003,
@@ -5654,18 +5654,18 @@ typedef struct VkSurfaceCapabilitiesFullScreenExclusiveEXT
     VkBool32 fullScreenExclusiveSupported;
 } VkSurfaceCapabilitiesFullScreenExclusiveEXT;
 
+typedef struct VkSurfaceFormatKHR
+{
+    VkFormat format;
+    VkColorSpaceKHR colorSpace;
+} VkSurfaceFormatKHR;
+
 typedef struct VkSurfaceFullScreenExclusiveWin32InfoEXT
 {
     VkStructureType sType;
     const void *pNext;
     HMONITOR hmonitor;
 } VkSurfaceFullScreenExclusiveWin32InfoEXT;
-
-typedef struct VkSurfaceFormatKHR
-{
-    VkFormat format;
-    VkColorSpaceKHR colorSpace;
-} VkSurfaceFormatKHR;
 
 typedef struct VkTextureLODGatherFormatPropertiesAMD
 {
@@ -6903,6 +6903,13 @@ typedef struct VkSurfaceCapabilitiesKHR
     VkImageUsageFlags supportedUsageFlags;
 } VkSurfaceCapabilitiesKHR;
 
+typedef struct VkSurfaceFullScreenExclusiveInfoEXT
+{
+    VkStructureType sType;
+    void *pNext;
+    VkFullScreenExclusiveEXT fullScreenExclusive;
+} VkSurfaceFullScreenExclusiveInfoEXT;
+
 typedef struct VkSwapchainCreateInfoKHR
 {
     VkStructureType sType;
@@ -6943,13 +6950,6 @@ typedef struct VkVertexInputAttributeDescription
     VkFormat format;
     uint32_t offset;
 } VkVertexInputAttributeDescription;
-
-typedef struct VkSurfaceFullScreenExclusiveInfoEXT
-{
-    VkStructureType sType;
-    void *pNext;
-    VkFullScreenExclusiveEXT fullScreenExclusive;
-} VkSurfaceFullScreenExclusiveInfoEXT;
 
 typedef struct VkVertexInputBindingDivisorDescriptionEXT
 {
