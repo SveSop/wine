@@ -1026,7 +1026,7 @@ static void sock_poll_event( struct fd *fd, int event )
         fprintf(stderr, "socket %p select event: %x\n", sock, event);
 
     /* we may change event later, remove from loop here */
-    if (event & (POLLERR|POLLHUP)) set_fd_events( sock->fd, -1 );
+    if (event & (POLLERR|POLLHUP) && sock->state != SOCK_LISTENING) set_fd_events( sock->fd, -1 );
 
     switch (sock->state)
     {
@@ -1198,6 +1198,10 @@ static int sock_get_poll_events( struct fd *fd )
         else if (!sock->wr_shutdown && (mask & AFD_POLL_WRITE))
         {
             ev |= POLLOUT;
+        }
+        if (sock->rd_shutdown && sock->wr_shutdown && ev == 0)
+        {
+            ev = -1;
         }
 
         break;
