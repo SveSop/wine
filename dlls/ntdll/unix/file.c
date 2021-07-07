@@ -4675,9 +4675,10 @@ static async_data_t server_async( HANDLE handle, struct async_fileio *user, HAND
     return async;
 }
 
-static NTSTATUS wait_async( HANDLE handle, BOOL alertable )
+static NTSTATUS wait_async( HANDLE handle, BOOL alertable, IO_STATUS_BLOCK *io )
 {
-    return NtWaitForSingleObject( handle, alertable, NULL );
+    if (NtWaitForSingleObject( handle, alertable, NULL )) return STATUS_PENDING;
+    return io->u.Status;
 }
 
 /* callback for irp async I/O completion */
@@ -4838,7 +4839,7 @@ static NTSTATUS server_read_file( HANDLE handle, HANDLE event, PIO_APC_ROUTINE a
 
     if (status != STATUS_PENDING) free( async );
 
-    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT) );
+    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT), io );
     return status;
 }
 
@@ -4876,7 +4877,7 @@ static NTSTATUS server_write_file( HANDLE handle, HANDLE event, PIO_APC_ROUTINE 
 
     if (status != STATUS_PENDING) free( async );
 
-    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT) );
+    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT), io );
     return status;
 }
 
@@ -4921,7 +4922,7 @@ static NTSTATUS server_ioctl_file( HANDLE handle, HANDLE event,
 
     if (status != STATUS_PENDING) free( async );
 
-    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT) );
+    if (wait_handle) status = wait_async( wait_handle, (options & FILE_SYNCHRONOUS_IO_ALERT), io );
     return status;
 }
 
@@ -5918,7 +5919,7 @@ NTSTATUS WINAPI NtFlushBuffersFile( HANDLE handle, IO_STATUS_BLOCK *io )
 
         if (ret != STATUS_PENDING) free( async );
 
-        if (wait_handle) ret = wait_async( wait_handle, FALSE );
+        if (wait_handle) ret = wait_async( wait_handle, FALSE, io );
     }
 
     if (needs_close) close( fd );
@@ -6417,7 +6418,7 @@ NTSTATUS WINAPI NtQueryVolumeInformationFile( HANDLE handle, IO_STATUS_BLOCK *io
         }
         SERVER_END_REQ;
         if (status != STATUS_PENDING) free( async );
-        if (wait_handle) status = wait_async( wait_handle, FALSE );
+        if (wait_handle) status = wait_async( wait_handle, FALSE, io );
         return status;
     }
     else if (io->u.Status) return io->u.Status;
